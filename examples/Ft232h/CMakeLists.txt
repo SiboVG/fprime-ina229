@@ -1,0 +1,17 @@
+cmake_minimum_required(VERSION 3.24)
+project(Ina229Ft232h C CXX)
+if(NOT EXISTS "${FPRIME_FRAMEWORK_PATH}/cmake/FPrime.cmake")
+    message(FATAL_ERROR "Set FPRIME_FRAMEWORK_PATH to the F Prime 3.5.1 checkout")
+endif()
+set(FPRIME_PROJECT_ROOT "${CMAKE_CURRENT_LIST_DIR}" CACHE PATH "" FORCE)
+get_filename_component(INA229_ROOT "${CMAKE_CURRENT_LIST_DIR}/../.." ABSOLUTE)
+set(FPRIME_LIBRARY_LOCATIONS "${INA229_ROOT}" CACHE STRING "" FORCE)
+set(FPRIME_CONFIG_DIR "${FPRIME_FRAMEWORK_PATH}/config" CACHE PATH "" FORCE)
+
+set(FPRIME_ENABLE_FRAMEWORK_UTS OFF CACHE BOOL "" FORCE)
+set(FPRIME_ENABLE_AUTOCODER_UTS OFF CACHE BOOL "" FORCE)
+include("${FPRIME_FRAMEWORK_PATH}/cmake/FPrime.cmake")
+fprime_setup_included_code()
+
+add_fprime_subdirectory("${CMAKE_CURRENT_LIST_DIR}/Driver")
+add_fprime_subdirectory("${CMAKE_CURRENT_LIST_DIR}/Deployment")

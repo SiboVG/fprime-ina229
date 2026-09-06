@@ -21,3 +21,6 @@ This is candidate integration software, not flight-qualified software. See
 
 See [F Prime integration](docs/fprime.md) for typed ports, commands, telemetry,
 execution context and generated component tests.
+
+The optional [FT232H deployment](docs/ft232h.md) connects a generated F Prime
+topology to PyFtdi through a generic byte bridge. See its wiring and run commands.
