@@ -18,3 +18,6 @@ ctest --test-dir /tmp/ina229-tests --output-on-failure
 
 This is candidate integration software, not flight-qualified software. See
 [device API and limits](docs/device.md) and [provenance](docs/provenance.md).
+
+See [F Prime integration](docs/fprime.md) for typed ports, commands, telemetry,
+execution context and generated component tests.
