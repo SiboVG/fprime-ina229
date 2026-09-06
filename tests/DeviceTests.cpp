@@ -188,6 +188,96 @@ INA229_TEST(AccumulatorResetAndAlertControls) {
     EXPECT_EQ(Status::INVALID_ARGUMENT, d.setThreshold(Register::VBUS, 1));
     EXPECT_EQ(Status::INVALID_ARGUMENT, d.setThreshold(Register::BOVL, 0x8000));
 }
+INA229_TEST(InitializationFaultMatrixAndInvalidLifecycle) {
+    for (int reg : {0, 1, 2, 3, 62, 63}) {
+        Bus b;
+        TestDelay delay;
+        Device d(b, delay);
+        b.failReadAddress = reg;
+        EXPECT_EQ(Status::SPI_ERROR, d.initialize(Configuration()));
+        EXPECT_FALSE(d.isInitialized());
+    }
+    for (int reg : {0, 1, 2, 3}) {
+        Bus b;
+        TestDelay delay;
+        Device d(b, delay);
+        b.failWriteAddress = reg;
+        EXPECT_EQ(Status::SPI_ERROR, d.initialize(Configuration()));
+        EXPECT_FALSE(d.isInitialized());
+    }
+    Bus b;
+    TestDelay delay;
+    Device d(b, delay);
+    delay.succeed = false;
+    EXPECT_EQ(Status::DELAY_ERROR, d.initialize(Configuration()));
+    EXPECT_FALSE(d.isInitialized());
+    EXPECT_EQ(Status::INVALID_STATE, d.configureAdc(AdcConfiguration()));
+    EXPECT_EQ(Status::INVALID_STATE, d.resetAccumulators());
+    EXPECT_EQ(Status::INVALID_STATE, d.setAlertConfig(0));
+    EXPECT_EQ(Status::INVALID_STATE, d.setThreshold(Register::SOVL, 0));
+    delay.succeed = true;
+    EXPECT_EQ(Status::OK, d.initialize(Configuration()));
+    b.ignoreWriteAddress = 1;
+    EXPECT_EQ(Status::VERIFY_ERROR, d.stop());
+    EXPECT_FALSE(d.isInitialized());
+    Measurement m;
+    EXPECT_EQ(Status::INVALID_STATE, d.read(m));
+}
+INA229_TEST(ConfigurationBoundariesAndPositiveNarrowScaling) {
+    Bus b;
+    TestDelay delay;
+    Device d(b, delay);
+    for (double value :
+         {0.0, -1.0, std::numeric_limits<double>::infinity(), std::numeric_limits<double>::quiet_NaN()}) {
+        Configuration c;
+        c.maxCurrent = value;
+        EXPECT_EQ(Status::INVALID_ARGUMENT, d.initialize(c));
+    }
+    Configuration c;
+    c.shuntOhms = 1e-12;
+    c.maxCurrent = 1;
+    EXPECT_EQ(Status::INVALID_ARGUMENT, d.initialize(c));
+    AdcConfiguration adc;
+    adc.busTime = 8;
+    EXPECT_EQ(Status::INVALID_ARGUMENT, d.configureAdc(adc));
+    EXPECT_TRUE(b.transactions.empty());
+    c = Configuration();
+    c.narrowRange = true;
+    c.maxCurrent = 2;
+    c.conversionDelaySteps = 255;
+    c.shuntTempco = 0x3fff;
+    c.temperatureCompensation = true;
+    EXPECT_EQ(Status::OK, d.initialize(c));
+    EXPECT_EQ(0x3ff0U, b.registers[0]);
+    b.registers[11] = 3;
+    b.registers[4] = 0x7ffff0;
+    b.registers[7] = 0x7ffff0;
+    b.registers[6] = 0x7fff;
+    b.registers[10] = 0x7fffffffffULL;
+    Measurement m;
+    EXPECT_EQ(Status::OK, d.read(m));
+    EXPECT_NEAR(524287 * 78.125e-9, m.shuntVolts, 1e-12);
+    EXPECT_NEAR(524287 * d.currentLsb(), m.currentAmps, 1e-12);
+    EXPECT_EQ(549755813887LL, m.rawCharge);
+    EXPECT_NEAR(32767 * 7.8125e-3, m.temperatureC, 1e-12);
+    EXPECT_EQ(Status::NOT_READY, d.read(m));
+}
+INA229_TEST(EveryAcquisitionTransferFailurePreservesOutput) {
+    for (int reg : {4, 5, 6, 7, 8, 9, 10, 11}) {
+        Bus b;
+        TestDelay delay;
+        Device d(b, delay);
+        EXPECT_EQ(Status::OK, d.initialize(Configuration()));
+        b.registers[11] = 3;
+        b.failReadAddress = reg;
+        Measurement m;
+        m.busVolts = 42;
+        m.validMask = 0x55;
+        EXPECT_EQ(Status::SPI_ERROR, d.read(m));
+        EXPECT_EQ(42, m.busVolts);
+        EXPECT_EQ(0x55U, m.validMask);
+    }
+}
 int main() {
     return Ina229Test::runAll();
 }

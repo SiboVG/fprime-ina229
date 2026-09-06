@@ -80,5 +80,21 @@ void ManagerTester::commands() {
     sendCmd_REPORT(0, 10);
     ASSERT_TLM_Initialized_SIZE(1);
     ASSERT_TLM_Samples(0, 1U);
+    ASSERT_CMD_RESPONSE_SIZE(10);
+    ASSERT_CMD_RESPONSE(4, Manager::OPCODE_READ_SNAPSHOT, 5, Fw::CmdResponse::OK);
+    ASSERT_CMD_RESPONSE(7, Manager::OPCODE_RESET_ACCUMULATORS, 8, Fw::CmdResponse::OK);
+    ASSERT_CMD_RESPONSE(8, Manager::OPCODE_STOP, 9, Fw::CmdResponse::OK);
+    ASSERT_CMD_RESPONSE(9, Manager::OPCODE_REPORT, 10, Fw::CmdResponse::OK);
+    bus.ignoreWriteAddress = 2;
+    c.setmaxCurrent(4);
+    sendCmd_INITIALIZE(0, 11, c);
+    ASSERT_CMD_RESPONSE(10, Manager::OPCODE_INITIALIZE, 11, Fw::CmdResponse::EXECUTION_ERROR);
+    sendCmd_REPORT(0, 12);
+    ASSERT_TLM_Initialized(1, 0);
+    clearHistory();
+    sendCmd_READ_SNAPSHOT(0, 13);
+    ASSERT_CMD_RESPONSE_SIZE(1);
+    ASSERT_CMD_RESPONSE(0, Manager::OPCODE_READ_SNAPSHOT, 13, Fw::CmdResponse::EXECUTION_ERROR);
+    ASSERT_TLM_Measurement_SIZE(0);
 }
 } // namespace Ina229

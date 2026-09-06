@@ -9,6 +9,8 @@ class Bus final : public Ina229::SpiBus {
     std::array<std::uint64_t, 64> registers{};
     std::vector<std::vector<std::uint8_t>> transactions;
     int failAddress = -1;
+    int failReadAddress = -1;
+    int failWriteAddress = -1;
     int ignoreWriteAddress = -1;
     Bus() {
         defaults();
@@ -23,7 +25,7 @@ class Bus final : public Ina229::SpiBus {
     bool transfer(const std::uint8_t *tx, std::uint8_t *rx, std::size_t size) override {
         transactions.emplace_back(tx, tx + size);
         const auto reg = tx[0] >> 2;
-        if (reg == failAddress)
+        if (reg == failAddress || ((tx[0] & 1) ? reg == failReadAddress : reg == failWriteAddress))
             return false;
         std::fill(rx, rx + size, 0);
         if (tx[0] & 1) {
@@ -61,9 +63,10 @@ class Bus final : public Ina229::SpiBus {
 class Delay final : public Ina229::Delay {
   public:
     std::uint32_t elapsed = 0;
+    bool succeed = true;
     bool milliseconds(std::uint32_t value) override {
         elapsed += value;
-        return true;
+        return succeed;
     }
 };
 } // namespace Ina229Test
