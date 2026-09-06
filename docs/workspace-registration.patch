@@ -1,0 +1,10 @@
+--- a/README.md
++++ b/README.md
+@@ -21,6 +21,7 @@
+ | --- | --- | --- | --- |
+ | F Prime CSP/libparam | `libraries/fprime-csp-libparam/` | Supported reusable library | Host/CI and Linux acceptance coverage exist; embedded targets still require porting and qualification. |
+ | F Prime ADXL355 | `libraries/fprime-adxl355/` | Candidate reusable library | Host verification exists; physical timing, synchronization, and flight-target HIL remain open. |
++| F Prime INA229 | `libraries/fprime-ina229/` | Candidate reusable library | Host/component and emulated FT232H deployment verification exist; physical SPI, accuracy, and flight-target HIL remain open. |
+ | CSP/libparam bench | `verification/benches/csp-libparam/` | Acceptance bench | Verification application, not flight code. |
+ 
+ Each maintained project remains its own Git repository. Run Git commands from that project directory; the workspace root deliberately does not combine their histories.

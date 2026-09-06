@@ -24,3 +24,8 @@ execution context and generated component tests.
 
 The optional [FT232H deployment](docs/ft232h.md) connects a generated F Prime
 topology to PyFtdi through a generic byte bridge. See its wiring and run commands.
+
+See [architecture and ownership](docs/architecture.md) and the
+[requirements and verification matrix](docs/verification.md) for contracts,
+reproduction commands and remaining hardware validation. Build the documentation
+with `python -m mkdocs build --strict` after installing `requirements-docs.txt`.

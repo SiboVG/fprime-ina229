@@ -1,0 +1,29 @@
+site_name: F Prime INA229 Library
+site_description: Hardware-independent INA229 device core, F Prime manager and optional FT232H bench
+docs_dir: docs
+site_dir: site
+strict: true
+theme:
+  name: material
+  features:
+    - content.code.copy
+plugins:
+  - search
+nav:
+  - Overview: index.md
+  - Architecture: architecture.md
+  - Device API: device.md
+  - F Prime integration: fprime.md
+  - FT232H example: ft232h.md
+  - Verification: verification.md
+  - Provenance: provenance.md
+markdown_extensions:
+  - tables
+  - fenced_code
+  - toc:
+      permalink: true
+validation:
+  omitted_files: warn
+  absolute_links: warn
+  unrecognized_links: warn
+  anchors: warn
