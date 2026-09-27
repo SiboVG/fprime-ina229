@@ -17,6 +17,8 @@ jobs:
       - run: cmake --build build-host --parallel 4
       - run: ctest --test-dir build-host --output-on-failure
       - run: python -m unittest discover -s tests -p test_bridge.py
+      - name: Evidence manifest matches sources
+        run: python tests/check_evidence.py
   sanitizers-coverage:
     runs-on: ubuntu-24.04
     steps:
@@ -36,7 +38,8 @@ jobs:
       - run: ctest --test-dir build-coverage --output-on-failure
       - run: >-
           python -m gcovr --root . --object-directory build-coverage
-          --filter 'Ina229/Device/' --txt --txt-summary --fail-under-line 90
+          --filter 'Ina229/Device/' --txt --txt-metric branch --txt-summary
+          --fail-under-line 90 --fail-under-branch 90
   fprime:
     runs-on: ubuntu-24.04
     steps:
@@ -55,8 +58,15 @@ jobs:
       - run: >-
           cmake -S tests/fprime-consumer -B build-components
           -DFPRIME_FRAMEWORK_PATH="$GITHUB_WORKSPACE/fprime"
+          -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
       - run: cmake --build build-components --target Ina229_Manager_ut_exe --parallel 4
       - run: build-components/bin/Linux/Ina229_Manager_ut_exe
+      - run: sudo apt-get update && sudo apt-get install -y clang-tidy
+      - name: Static analysis of authored flight sources
+        run: >-
+          clang-tidy -p build-components --warnings-as-errors='clang-analyzer-*'
+          --extra-arg=-Wno-unknown-warning-option
+          Ina229/Device/Device.cpp Ina229/Manager/Manager.cpp
       - run: >-
           cmake -S examples/Ft232h -B build-ft232h
           -DFPRIME_FRAMEWORK_PATH="$GITHUB_WORKSPACE/fprime"

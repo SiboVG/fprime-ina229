@@ -1,14 +1,33 @@
+$ gcovr --root . --object-directory build-coverage --filter 'Ina229/Device/' --txt --txt-summary --fail-under-line 90 --fail-under-branch 90
+(INFO) Reading coverage data...
+(INFO) Writing coverage report...
 ------------------------------------------------------------------------------
                            GCC Code Coverage Report
 Directory: .
 ------------------------------------------------------------------------------
 File                                       Lines    Exec  Cover   Missing
 ------------------------------------------------------------------------------
-Ina229/Device/Device.cpp                     189     188    99%   112
-Ina229/Device/Device.hpp                      10       0     0%   51-59,61
+Ina229/Device/Device.cpp                     217     217   100%
+Ina229/Device/Device.hpp                      10       0     0%   59-67,69
 ------------------------------------------------------------------------------
-TOTAL                                        199     188    94%
+TOTAL                                        227     217    95%
 ------------------------------------------------------------------------------
-lines: 94.5% (188 out of 199)
-functions: 93.8% (15 out of 16)
-branches: 93.0% (120 out of 129)
+lines: 95.6% (217 out of 227)
+functions: 94.4% (17 out of 18)
+branches: 98.6% (145 out of 147)
+exit=0
+
+$ gcovr --root . --object-directory build-coverage --filter 'Ina229/Device/' --txt --txt-metric branch
+(INFO) Reading coverage data...
+(INFO) Writing coverage report...
+------------------------------------------------------------------------------
+                           GCC Code Coverage Report
+Directory: .
+------------------------------------------------------------------------------
+File                                    Branches   Taken  Cover   Missing
+------------------------------------------------------------------------------
+Ina229/Device/Device.cpp                     147     145    98%   94
+Ina229/Device/Device.hpp                       0       0    --%
+------------------------------------------------------------------------------
+TOTAL                                        147     145    98%
+------------------------------------------------------------------------------

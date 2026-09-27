@@ -1,23 +1,28 @@
-[1/8] Building CXX object Ina229/Device/CMakeFiles/Ina229_Device.dir/Device.cpp.o
-[2/8] Linking CXX static library lib/Darwin/libIna229_Device.a
-[3/8] Building CXX object Ina229/Manager/CMakeFiles/Ina229_Manager.dir/Manager.cpp.o
-[4/8] Linking CXX static library lib/Darwin/libIna229_Manager.a
-[5/8] Building CXX object Ina229/Manager/CMakeFiles/Ina229_Manager_ut_exe.dir/ManagerTesterHelpers.cpp.o
-[6/8] Building CXX object Ina229/Manager/CMakeFiles/Ina229_Manager_ut_exe.dir/test/ut/ManagerTestMain.cpp.o
-[7/8] Building CXX object Ina229/Manager/CMakeFiles/Ina229_Manager_ut_exe.dir/test/ut/ManagerTester.cpp.o
-[8/8] Linking CXX executable bin/Darwin/Ina229_Manager_ut_exe
+$ cmake --build build-components --target Ina229_Manager_ut_exe
 ld: warning: ignoring duplicate libraries: 'lib/Darwin/libFw_Cmd.a', 'lib/Darwin/libFw_Log.a', 'lib/Darwin/libFw_Time.a', 'lib/Darwin/libFw_Tlm.a'
-[==========] Running 3 tests from 1 test suite.
+exit=0
+
+$ build-components/bin/Darwin/Ina229_Manager_ut_exe
+[==========] Running 7 tests from 1 test suite.
 [----------] Global test environment set-up.
-[----------] 3 tests from Manager
+[----------] 7 tests from Manager
 [ RUN      ] Manager.Nominal
 [       OK ] Manager.Nominal (2 ms)
 [ RUN      ] Manager.Failures
 [       OK ] Manager.Failures (2 ms)
 [ RUN      ] Manager.Commands
-[       OK ] Manager.Commands (4 ms)
-[----------] 3 tests from Manager (10 ms total)
+[       OK ] Manager.Commands (5 ms)
+[ RUN      ] Manager.AlertConfigurationKeepsReadsValid
+[       OK ] Manager.AlertConfigurationKeepsReadsValid (2 ms)
+[ RUN      ] Manager.IntermittentFaultsAreRateLimited
+[       OK ] Manager.IntermittentFaultsAreRateLimited (5 ms)
+[ RUN      ] Manager.ValidationErrorsAreNotDeviceFaults
+[       OK ] Manager.ValidationErrorsAreNotDeviceFaults (2 ms)
+[ RUN      ] Manager.OverflowDegradesAndRestores
+[       OK ] Manager.OverflowDegradesAndRestores (2 ms)
+[----------] 7 tests from Manager (25 ms total)
 
 [----------] Global test environment tear-down
-[==========] 3 tests from 1 test suite ran. (10 ms total)
-[  PASSED  ] 3 tests.
+[==========] 7 tests from 1 test suite ran. (25 ms total)
+[  PASSED  ] 7 tests.
+exit=0

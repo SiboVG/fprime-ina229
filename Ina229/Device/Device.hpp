@@ -12,7 +12,6 @@ enum class Status : std::uint8_t {
     VERIFY_ERROR,
     NOT_READY,
     DEVICE_ERROR,
-    NUMERIC_OVERFLOW,
     DELAY_ERROR
 };
 enum class Register : std::uint8_t {
@@ -37,6 +36,15 @@ enum class Register : std::uint8_t {
     MANUFACTURER_ID = 62,
     DEVICE_ID = 63
 };
+// DIAG_ALRT fields, datasheet SLYS023A Table 7-16.
+namespace Diag {
+constexpr std::uint16_t MEMSTAT = 0x0001, CNVRF = 0x0002, MATHOF = 0x0200, CHARGEOF = 0x0400,
+                        ENERGYOF = 0x0800, CONFIG_BITS = 0xf000;
+}
+// Measurement::validMask bits.
+namespace Valid {
+constexpr std::uint8_t BUS = 1, SHUNT = 2, TEMPERATURE = 4, CURRENT = 8, POWER = 16, ENERGY = 32, CHARGE = 64;
+}
 // Field encodings are those of ADC_CONFIG; checked before any write.
 struct AdcConfiguration {
     std::uint8_t mode = 15, busTime = 0, shuntTime = 0, temperatureTime = 0, averaging = 0;
@@ -57,7 +65,7 @@ struct Measurement {
     double busVolts = 0, shuntVolts = 0, temperatureC = 0, currentAmps = 0;
     double powerWatts = 0, energyJoules = 0, chargeCoulombs = 0;
     std::uint16_t diagnostics = 0;
-    // bits: bus, shunt, temperature, current, power, energy, charge.
+    // Valid:: bits. A clear bit means the value is stale or untrustworthy.
     std::uint8_t validMask = 0;
 };
 class SpiBus {
@@ -93,6 +101,12 @@ class Device final {
     double currentLsb() const {
         return m_currentLsb;
     }
+    // Channels the configured ADC mode produces; read() reports a subset when degraded.
+    std::uint8_t expectedValidMask() const;
+    // ENERGY/CHARGE bits latched invalid until resetAccumulators() or initialize().
+    std::uint8_t invalidAccumulators() const {
+        return m_invalidAccumulators;
+    }
 
   private:
     Status write(Register reg, std::uint16_t value);
@@ -103,5 +117,6 @@ class Device final {
     bool m_initialized = false;
     double m_currentLsb = 0;
     std::uint16_t m_configWord = 0, m_adcWord = 0;
+    std::uint8_t m_invalidAccumulators = 0;
 };
 } // namespace Ina229

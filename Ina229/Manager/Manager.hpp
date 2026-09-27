@@ -7,7 +7,8 @@ class Manager final : public ManagerComponentBase {
     explicit Manager(const char *name);
 
   private:
-    DriverStatus configure_handler(FwIndexType, DeviceConfig &) override;
+    // All handlers run with the component mutex held (guarded ports and commands).
+    DriverStatus configure_handler(FwIndexType, const DeviceConfig &) override;
     DriverStatus read_handler(FwIndexType, Reading &) override;
     void INITIALIZE_cmdHandler(FwOpcodeType, U32, DeviceConfig) override;
     void CONFIGURE_ADC_cmdHandler(FwOpcodeType, U32, U8, U8, U8, U8, U8) override;
@@ -18,6 +19,7 @@ class Manager final : public ManagerComponentBase {
     void SET_THRESHOLD_cmdHandler(FwOpcodeType, U32, U8, U16) override;
     void READ_SNAPSHOT_cmdHandler(FwOpcodeType, U32) override;
     void REPORT_cmdHandler(FwOpcodeType, U32) override;
+    void CLEAR_EVENT_THROTTLE_cmdHandler(FwOpcodeType, U32) override;
 
     class PortBus final : public SpiBus {
       public:
@@ -32,12 +34,19 @@ class Manager final : public ManagerComponentBase {
         bool milliseconds(std::uint32_t) override;
     };
     static DriverStatus convert(Status);
-    void record(Status);
-    void respond(FwOpcodeType, U32, Status);
+    // Unlocked helpers: callers already hold the (non-recursive) component mutex.
+    Status initialize(const DeviceConfig &);
+    Status acquire(Reading &);
+    void record(Operation, Status);
+    void recordValidity(U8 valid, U8 expected);
+    void respond(FwOpcodeType, U32, Operation, Status);
+    void clearThrottles();
     PortBus m_bus;
     OsDelay m_delay;
     Device m_device;
     Status m_last = Status::OK;
     U64 m_samples = 0, m_errors = 0;
+    bool m_degraded = false;
+    U8 m_degradedMask = 0;
 };
 } // namespace Ina229

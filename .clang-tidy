@@ -1,0 +1,6 @@
+---
+Checks: '-*,clang-analyzer-*'
+WarningsAsErrors: 'clang-analyzer-*'
+HeaderFilterRegex: '.*/Ina229/.*'
+FormatStyle: none
+...

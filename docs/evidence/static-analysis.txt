@@ -1,0 +1,10 @@
+$ clang-tidy --version
+Homebrew LLVM version 18.1.8
+  Optimized build.
+# Homebrew LLVM 18 cannot parse the macOS 27 SDK headers, so this analysis alone adds
+# --extra-arg=-nostdinc++ --extra-arg=-isystem<llvm@18>/include/c++/v1 --extra-arg=-isysroot --extra-arg=<MacOSX26.5.sdk>.
+# The compilation database comes from the default-SDK component build.
+$ clang-tidy -p build-components --warnings-as-errors='clang-analyzer-*' Ina229/Device/Device.cpp Ina229/Manager/Manager.cpp
+[1/2] Processing file Ina229/Device/Device.cpp.
+[2/2] Processing file Ina229/Manager/Manager.cpp.
+exit=0

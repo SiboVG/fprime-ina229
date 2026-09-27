@@ -6,10 +6,15 @@ namespace Ina229 {
 class ManagerTester final : public ManagerGTestBase {
   public:
     static const NATIVE_INT_TYPE TEST_INSTANCE_ID = 0;
+    static const NATIVE_INT_TYPE MAX_HISTORY_SIZE = 1000;
     ManagerTester();
     void nominal();
     void failures();
     void commands();
+    void alertConfigurationKeepsReadsValid();
+    void intermittentFaultsAreRateLimited();
+    void validationErrorsAreNotDeviceFaults();
+    void overflowDegradesAndRestores();
 
   private:
     void connectPorts();

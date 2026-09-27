@@ -51,43 +51,64 @@ DriverStatus Manager::convert(Status status) {
         return DriverStatus::NOT_READY;
     case Status::DEVICE_ERROR:
         return DriverStatus::DEVICE_ERROR;
-    case Status::NUMERIC_OVERFLOW:
-        return DriverStatus::NUMERIC_OVERFLOW;
     case Status::DELAY_ERROR:
         return DriverStatus::DELAY_ERROR;
     default:
         return DriverStatus::INVALID_STATE;
     }
 }
-void Manager::record(Status status) {
+void Manager::clearThrottles() {
+    log_WARNING_HI_OperationFailed_ThrottleClear();
+    log_ACTIVITY_LO_Recovered_ThrottleClear();
+    log_WARNING_HI_MeasurementDegraded_ThrottleClear();
+    log_ACTIVITY_LO_MeasurementRestored_ThrottleClear();
+}
+void Manager::record(Operation operation, Status status) {
     // Polling before conversion completes is routine, not a fault or recovery.
     if (status == Status::NOT_READY)
         return;
     if (status != Status::OK)
         ++m_errors;
+    // Edges only; FPP throttles bound the rate when a fault is intermittent.
     if (status != m_last) {
-        if (isConnected_tlmOut_OutputPort(0))
-            tlmWrite_LastStatus(convert(status));
+        tlmWrite_LastStatus(convert(status));
         if (status != Status::OK)
-            log_WARNING_HI_OperationFailed(convert(status));
+            log_WARNING_HI_OperationFailed(operation, convert(status));
         else
-            log_ACTIVITY_LO_Recovered();
+            log_ACTIVITY_LO_Recovered(operation);
     }
     m_last = status;
 }
-void Manager::respond(FwOpcodeType opcode, U32 sequence, Status status) {
-    record(status);
+void Manager::recordValidity(U8 valid, U8 expected) {
+    if (valid != expected) {
+        if (!m_degraded || valid != m_degradedMask)
+            log_WARNING_HI_MeasurementDegraded(valid, expected);
+        m_degraded = true;
+        m_degradedMask = valid;
+    } else if (m_degraded) {
+        log_ACTIVITY_LO_MeasurementRestored(valid);
+        m_degraded = false;
+    }
+}
+void Manager::respond(FwOpcodeType opcode, U32 sequence, Operation operation, Status status) {
+    // A rejected ground argument or an out-of-sequence command is not a device fault: the command
+    // response and the command dispatcher's opcode-error event are the operator evidence.
+    if (status != Status::INVALID_ARGUMENT && status != Status::INVALID_STATE)
+        record(operation, status);
     const auto response = status == Status::OK                 ? Fw::CmdResponse::OK
                           : status == Status::INVALID_ARGUMENT ? Fw::CmdResponse::VALIDATION_ERROR
                                                                : Fw::CmdResponse::EXECUTION_ERROR;
     cmdResponse_out(opcode, sequence, response);
 }
-DriverStatus Manager::configure_handler(FwIndexType, DeviceConfig &config) {
+Status Manager::initialize(const DeviceConfig &config) {
     const auto status = m_device.initialize(toCore(config));
-    record(status);
-    return convert(status);
+    if (status == Status::OK) {
+        m_degraded = false;
+        clearThrottles();
+    }
+    return status;
 }
-DriverStatus Manager::read_handler(FwIndexType, Reading &sample) {
+Status Manager::acquire(Reading &sample) {
     Measurement m;
     const auto status = m_device.read(m);
     if (status == Status::OK) {
@@ -108,12 +129,21 @@ DriverStatus Manager::read_handler(FwIndexType, Reading &sample) {
         sample.setdiagnostics(m.diagnostics);
         sample.setvalidMask(m.validMask);
         ++m_samples;
+        recordValidity(m.validMask, m_device.expectedValidMask());
     }
-    record(status);
+    record(Operation::READ, status);
+    return status;
+}
+DriverStatus Manager::configure_handler(FwIndexType, const DeviceConfig &config) {
+    const auto status = initialize(config);
+    record(Operation::INITIALIZE, status);
     return convert(status);
 }
+DriverStatus Manager::read_handler(FwIndexType, Reading &sample) {
+    return convert(acquire(sample));
+}
 void Manager::INITIALIZE_cmdHandler(FwOpcodeType op, U32 seq, DeviceConfig config) {
-    respond(op, seq, m_device.initialize(toCore(config)));
+    respond(op, seq, Operation::INITIALIZE, initialize(config));
 }
 void Manager::CONFIGURE_ADC_cmdHandler(FwOpcodeType op, U32 seq, U8 mode, U8 busTime, U8 shuntTime,
                                        U8 temperatureTime, U8 averaging) {
@@ -123,38 +153,39 @@ void Manager::CONFIGURE_ADC_cmdHandler(FwOpcodeType op, U32 seq, U8 mode, U8 bus
     adc.shuntTime = shuntTime;
     adc.temperatureTime = temperatureTime;
     adc.averaging = averaging;
-    respond(op, seq, m_device.configureAdc(adc));
+    respond(op, seq, Operation::CONFIGURE_ADC, m_device.configureAdc(adc));
 }
 void Manager::TRIGGER_cmdHandler(FwOpcodeType op, U32 seq) {
-    respond(op, seq, m_device.trigger());
+    respond(op, seq, Operation::TRIGGER, m_device.trigger());
 }
 void Manager::STOP_cmdHandler(FwOpcodeType op, U32 seq) {
-    respond(op, seq, m_device.stop());
+    respond(op, seq, Operation::STOP, m_device.stop());
 }
 void Manager::RESET_ACCUMULATORS_cmdHandler(FwOpcodeType op, U32 seq) {
-    respond(op, seq, m_device.resetAccumulators());
+    respond(op, seq, Operation::RESET_ACCUMULATORS, m_device.resetAccumulators());
 }
 void Manager::SET_ALERT_CONFIG_cmdHandler(FwOpcodeType op, U32 seq, U16 bits) {
-    respond(op, seq, m_device.setAlertConfig(bits));
+    respond(op, seq, Operation::SET_ALERT_CONFIG, m_device.setAlertConfig(bits));
 }
 void Manager::SET_THRESHOLD_cmdHandler(FwOpcodeType op, U32 seq, U8 address, U16 raw) {
-    respond(op, seq, m_device.setThreshold(static_cast<Register>(address), raw));
+    respond(op, seq, Operation::SET_THRESHOLD, m_device.setThreshold(static_cast<Register>(address), raw));
 }
 void Manager::READ_SNAPSHOT_cmdHandler(FwOpcodeType op, U32 seq) {
     Reading sample;
-    const auto status = read_handler(0, sample);
-    if (status == DriverStatus::OK && isConnected_tlmOut_OutputPort(0))
+    const auto status = acquire(sample);
+    if (status == Status::OK)
         tlmWrite_Measurement(sample);
-    cmdResponse_out(op, seq,
-                    status == DriverStatus::OK ? Fw::CmdResponse::OK : Fw::CmdResponse::EXECUTION_ERROR);
+    cmdResponse_out(op, seq, status == Status::OK ? Fw::CmdResponse::OK : Fw::CmdResponse::EXECUTION_ERROR);
 }
 void Manager::REPORT_cmdHandler(FwOpcodeType op, U32 seq) {
-    if (isConnected_tlmOut_OutputPort(0)) {
-        tlmWrite_Initialized(m_device.isInitialized() ? 1 : 0);
-        tlmWrite_LastStatus(convert(m_last));
-        tlmWrite_Samples(m_samples);
-        tlmWrite_Errors(m_errors);
-    }
+    tlmWrite_Initialized(m_device.isInitialized() ? 1 : 0);
+    tlmWrite_LastStatus(convert(m_last));
+    tlmWrite_Samples(m_samples);
+    tlmWrite_Errors(m_errors);
+    cmdResponse_out(op, seq, Fw::CmdResponse::OK);
+}
+void Manager::CLEAR_EVENT_THROTTLE_cmdHandler(FwOpcodeType op, U32 seq) {
+    clearThrottles();
     cmdResponse_out(op, seq, Fw::CmdResponse::OK);
 }
 } // namespace Ina229

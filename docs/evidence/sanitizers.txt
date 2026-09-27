@@ -1,16 +1,21 @@
-[1/7] Building CXX object CMakeFiles/ina229_core.dir/Users/sibo/Desktop/CubeSpec/FlightSoftware/libraries/fprime-ina229/Ina229/Device/Device.cpp.o
+$ cmake --build build-san
+[1/7] Building CXX object CMakeFiles/ina229_core.dirIna229/Device/Device.cpp.o
 [2/7] Linking CXX static library libina229_core.a
-[3/7] Building CXX object CMakeFiles/ina229_bridge_tests.dir/Users/sibo/Desktop/CubeSpec/FlightSoftware/libraries/fprime-ina229/examples/Ft232h/UnixSpi.cpp.o
+[3/7] Building CXX object CMakeFiles/ina229_bridge_tests.direxamples/Ft232h/UnixSpi.cpp.o
 [4/7] Building CXX object CMakeFiles/ina229_bridge_tests.dir/BridgeTests.cpp.o
 [5/7] Linking CXX executable ina229_bridge_tests
 [6/7] Building CXX object CMakeFiles/ina229_tests.dir/DeviceTests.cpp.o
 [7/7] Linking CXX executable ina229_tests
-Test project /tmp/ina229-san
+exit=0
+
+$ ASAN_OPTIONS=halt_on_error=1 UBSAN_OPTIONS=halt_on_error=1 ctest --test-dir build-san --output-on-failure
+Test project build-san
     Start 1: ina229_device
-1/2 Test #1: ina229_device ....................   Passed    3.23 sec
+1/2 Test #1: ina229_device ....................   Passed    0.02 sec
     Start 2: ina229_bridge
-2/2 Test #2: ina229_bridge ....................   Passed    0.21 sec
+2/2 Test #2: ina229_bridge ....................   Passed    0.03 sec
 
 100% tests passed, 0 tests failed out of 2
 
-Total Test time (real) =   3.45 sec
+Total Test time (real) =   0.06 sec
+exit=0

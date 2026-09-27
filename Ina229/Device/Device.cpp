@@ -3,6 +3,7 @@
 #include <cmath>
 namespace Ina229 {
 namespace {
+// Register widths and reserved bits: datasheet SLYS023A section 7.6.1.
 std::size_t width(Register reg) {
     switch (reg) {
     case Register::ENERGY:
@@ -19,6 +20,9 @@ std::size_t width(Register reg) {
     }
     }
 }
+// DIAG_ALRT bit 8 and VSHUNT/VBUS/CURRENT bits 3..0 always read 0 (Tables 7-9, 7-10, 7-12, 7-16);
+// a set bit means the bus did not return device data (for example MISO stuck high).
+constexpr std::uint64_t DIAG_RESERVED = 0x0100, RESULT_RESERVED = 0x0f;
 bool validAdc(const AdcConfiguration &adc) {
     return adc.mode <= 15 && adc.busTime <= 7 && adc.shuntTime <= 7 && adc.temperatureTime <= 7 &&
            adc.averaging <= 7;
@@ -26,6 +30,19 @@ bool validAdc(const AdcConfiguration &adc) {
 std::uint16_t adcWord(const AdcConfiguration &adc) {
     return static_cast<std::uint16_t>((adc.mode << 12) | (adc.busTime << 9) | (adc.shuntTime << 6) |
                                       (adc.temperatureTime << 3) | adc.averaging);
+}
+// Low three MODE bits select bus/shunt/temperature (Table 7-6); only continuous modes accumulate.
+std::uint8_t modeMask(std::uint8_t mode) {
+    auto mask = static_cast<std::uint8_t>(mode & 7);
+    if (mode & 2)
+        mask |= Valid::CURRENT;
+    if ((mode & 3) == 3)
+        mask |= Valid::POWER;
+    if ((mode & 8) && (mode & 3) == 3)
+        mask |= Valid::ENERGY;
+    if ((mode & 8) && (mode & 2))
+        mask |= Valid::CHARGE;
+    return mask;
 }
 std::int64_t signedValue(std::uint64_t value, unsigned bits) {
     const auto signedMagnitude = static_cast<std::int64_t>(value);
@@ -114,6 +131,8 @@ Status Device::initialize(const Configuration &config) {
     m_currentLsb = lsb;
     m_configWord = configWord;
     m_adcWord = adcWord(config.adc);
+    // RST cleared the accumulators and their overflow flags.
+    m_invalidAccumulators = 0;
     m_initialized = true;
     return Status::OK;
 }
@@ -143,23 +162,48 @@ Status Device::trigger() {
 Status Device::resetAccumulators() {
     if (!m_initialized)
         return Status::INVALID_STATE;
-    // RSTACC initiates the reset; readback checks retained configuration, not elapsed energy.
-    return verifiedWrite(Register::CONFIG, static_cast<std::uint16_t>(m_configWord | 0x4000), 0x3ff0);
+    // RSTACC zeroes ENERGY/CHARGE and clears MATHOF (Tables 7-5, 7-16); readback checks retained
+    // configuration, not elapsed energy.
+    auto status = verifiedWrite(Register::CONFIG, static_cast<std::uint16_t>(m_configWord | 0x4000), 0x3ff0);
+    // ENERGYOF/CHARGEOF clear only when their registers are read: drain a stale indication so
+    // the next read() does not re-latch an overflow that preceded the reset.
+    std::uint64_t discarded = 0;
+    if (status == Status::OK)
+        status = readRegister(Register::ENERGY, discarded);
+    if (status == Status::OK)
+        status = readRegister(Register::CHARGE, discarded);
+    if (status == Status::OK)
+        m_invalidAccumulators = 0;
+    return status;
 }
 Status Device::setAlertConfig(std::uint16_t bits) {
-    if (bits & 0x0fff)
+    if (bits & ~Diag::CONFIG_BITS)
         return Status::INVALID_ARGUMENT;
     if (!m_initialized)
         return Status::INVALID_STATE;
-    return verifiedWrite(Register::DIAG_ALRT, bits, 0xf000);
+    // DIAG_ALRT bits 7..0 are R/W, including MEMSTAT (reset 1, Table 7-16). Preserve MEMSTAT so a
+    // configuration write can neither fake nor hide a trim-memory checksum error. The write clears
+    // the alert-limit flags and CNVRF, and the read clears latched flags when ALATCH = 1.
+    std::uint64_t current = 0;
+    const auto status = readRegister(Register::DIAG_ALRT, current);
+    if (status != Status::OK)
+        return status;
+    const auto value = static_cast<std::uint16_t>(bits | (current & Diag::MEMSTAT));
+    return verifiedWrite(Register::DIAG_ALRT, value,
+                         static_cast<std::uint16_t>(Diag::CONFIG_BITS | Diag::MEMSTAT));
 }
 Status Device::setThreshold(Register reg, std::uint16_t raw) {
     const auto address = static_cast<std::uint8_t>(reg);
+    // BOVL/BUVL bit 15 is reserved (Tables 7-19, 7-20); SOVL, SUVL, TEMP_LIMIT and PWR_LIMIT
+    // are full 16-bit fields (Tables 7-17, 7-18, 7-21, 7-22).
     if (address < 12 || address > 17 || ((reg == Register::BOVL || reg == Register::BUVL) && (raw & 0x8000)))
         return Status::INVALID_ARGUMENT;
     if (!m_initialized)
         return Status::INVALID_STATE;
     return verifiedWrite(reg, raw);
+}
+std::uint8_t Device::expectedValidMask() const {
+    return m_initialized ? modeMask(m_config.adc.mode) : 0;
 }
 Status Device::read(Measurement &measurement) {
     const auto mode = m_config.adc.mode;
@@ -169,11 +213,19 @@ Status Device::read(Measurement &measurement) {
     auto status = readRegister(Register::DIAG_ALRT, diag);
     if (status != Status::OK)
         return status;
-    if (!(diag & 1))
+    if (diag & DIAG_RESERVED)
         return Status::DEVICE_ERROR;
-    if (diag & 0x0e00)
-        return Status::NUMERIC_OVERFLOW;
-    if (!(diag & 2))
+    // Latch before any other read: reading ENERGY/CHARGE clears ENERGYOF/CHARGEOF (Table 7-16),
+    // so an overflow is remembered even if a later transfer fails. MATHOF means current and power
+    // may be invalid, so the accumulated energy and charge are no longer trustworthy either.
+    if (diag & (Diag::MATHOF | Diag::ENERGYOF))
+        m_invalidAccumulators |= Valid::ENERGY;
+    if (diag & (Diag::MATHOF | Diag::CHARGEOF))
+        m_invalidAccumulators |= Valid::CHARGE;
+    // MEMSTAT = 0 is a trim-memory checksum error: no result can be trusted.
+    if (!(diag & Diag::MEMSTAT))
+        return Status::DEVICE_ERROR;
+    if (!(diag & Diag::CNVRF))
         return Status::NOT_READY;
     const Register registers[7] = {Register::VSHUNT, Register::VBUS,   Register::DIETEMP, Register::CURRENT,
                                    Register::POWER,  Register::ENERGY, Register::CHARGE};
@@ -183,6 +235,8 @@ Status Device::read(Measurement &measurement) {
         if (status != Status::OK)
             return status;
     }
+    if ((raw[0] | raw[1] | raw[3]) & RESULT_RESERVED)
+        return Status::DEVICE_ERROR;
     Measurement result;
     result.rawShunt = static_cast<std::int32_t>(signedValue(raw[0] >> 4, 20));
     result.rawBus = static_cast<std::uint32_t>(raw[1] >> 4);
@@ -199,15 +253,10 @@ Status Device::read(Measurement &measurement) {
     result.energyJoules = static_cast<double>(result.rawEnergy) * 51.2 * m_currentLsb;
     result.chargeCoulombs = static_cast<double>(result.rawCharge) * m_currentLsb;
     result.diagnostics = static_cast<std::uint16_t>(diag);
-    result.validMask = static_cast<std::uint8_t>(mode & 7);
-    if (mode & 2)
-        result.validMask |= 8;
-    if ((mode & 3) == 3)
-        result.validMask |= 16;
-    if ((mode & 8) && (mode & 3) == 3)
-        result.validMask |= 32;
-    if ((mode & 8) && (mode & 2))
-        result.validMask |= 64;
+    auto valid = static_cast<std::uint8_t>(modeMask(mode) & ~m_invalidAccumulators);
+    if (diag & Diag::MATHOF)
+        valid &= static_cast<std::uint8_t>(~(Valid::CURRENT | Valid::POWER));
+    result.validMask = valid;
     measurement = result;
     return Status::OK;
 }

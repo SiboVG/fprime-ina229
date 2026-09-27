@@ -1,6 +1,10 @@
-.SPI transfer failed: injected USB error
-.
+$ INA229_DEMO=build-ft232h/bin/Darwin/Deployment python3 tests/test_deployment.py -v
+test_full_fprime_path (__main__.Integration.test_full_fprime_path) ... ok
+test_transport_fault_is_not_valid_data (__main__.Integration.test_transport_fault_is_not_valid_data) ... SPI transfer failed: injected USB error
+ok
+
 ----------------------------------------------------------------------
-Ran 2 tests in 0.162s
+Ran 2 tests in 0.011s
 
 OK
+exit=0

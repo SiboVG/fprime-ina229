@@ -8,8 +8,18 @@ module Ina229 {
     VERIFY_ERROR
     NOT_READY
     DEVICE_ERROR
-    NUMERIC_OVERFLOW
     DELAY_ERROR
+  }
+  @ Manager operation named in operator events.
+  enum Operation {
+    INITIALIZE
+    CONFIGURE_ADC
+    TRIGGER
+    STOP
+    RESET_ACCUMULATORS
+    SET_ALERT_CONFIG
+    SET_THRESHOLD
+    READ
   }
   @ Completion of a generic synchronous SPI exchange.
   enum TransferStatus { OK, ERROR }
@@ -29,6 +39,7 @@ module Ina229 {
     temperatureTime: U8
     averaging: U8
   }
+  @ validMask bits: 0 bus, 1 shunt, 2 temperature, 3 current, 4 power, 5 energy, 6 charge.
   struct Reading {
     busVolts: F64
     shuntVolts: F64
@@ -47,7 +58,8 @@ module Ina229 {
     diagnostics: U16
     validMask: U8
   }
-  port Configure(ref config: DeviceConfig) -> DriverStatus
+  @ Input-only: the manager copies the configuration and never modifies the caller's value.
+  port Configure(config: DeviceConfig) -> DriverStatus
   @ Returns NOT_READY without waiting; leaves sample unchanged on failure.
   port Read(ref sample: Reading) -> DriverStatus
 }

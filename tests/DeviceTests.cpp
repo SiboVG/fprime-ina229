@@ -47,6 +47,7 @@ INA229_TEST(InitializeValidatesIdentityAndCalibrationBeforeMeasurement) {
     EXPECT_EQ(Status::OK, d.initialize(c));
     EXPECT_EQ(2000U, b.registers[2]);
     EXPECT_EQ(0x10U, b.registers[0]);
+    EXPECT_EQ(0U, b.illegalWrites);
     b.registers[0x3f] = 0x2280;
     EXPECT_EQ(Status::IDENTITY_MISMATCH, d.initialize(c));
     EXPECT_FALSE(d.isInitialized());
@@ -110,9 +111,10 @@ INA229_TEST(ReadFailuresPreserveOutputAndDoNotClaimFreshness) {
     EXPECT_EQ(Status::OK, d.initialize(Configuration()));
     EXPECT_EQ(Status::NOT_READY, d.read(m));
     EXPECT_EQ(42, m.busVolts);
-    for (auto flags : {0U, 0x203U, 0x403U, 0x803U}) {
+    // MEMSTAT = 0 (trim checksum error) and the always-zero DIAG_ALRT bit 8 reject the whole read.
+    for (auto flags : {0x0U, 0x2U, 0x103U}) {
         b.registers[0xb] = flags;
-        EXPECT_EQ(flags == 0 ? Status::DEVICE_ERROR : Status::NUMERIC_OVERFLOW, d.read(m));
+        EXPECT_EQ(Status::DEVICE_ERROR, d.read(m));
         EXPECT_EQ(42, m.busVolts);
     }
     b.registers[0xb] = 3;
@@ -156,6 +158,7 @@ INA229_TEST(AdcModesValidityAndTriggering) {
         Measurement m;
         EXPECT_EQ((mode & 7) == 0 ? Status::INVALID_STATE : Status::OK, d.read(m));
         if ((mode & 7) != 0) {
+            EXPECT_EQ(d.expectedValidMask(), m.validMask);
             EXPECT_EQ((mode & 1) != 0, (m.validMask & 1) != 0);
             EXPECT_EQ((mode & 2) != 0, (m.validMask & 2) != 0);
             EXPECT_EQ((mode & 4) != 0, (m.validMask & 4) != 0);
@@ -181,12 +184,17 @@ INA229_TEST(AccumulatorResetAndAlertControls) {
     EXPECT_EQ(0U, b.registers[9]);
     EXPECT_EQ(0xc0U, b.registers[0]);
     EXPECT_EQ(Status::OK, d.setAlertConfig(0xc000));
-    EXPECT_EQ(0xc000U, b.registers[0xb]);
+    EXPECT_EQ(0xc001U, b.registers[0xb]);
     EXPECT_EQ(Status::INVALID_ARGUMENT, d.setAlertConfig(1));
     EXPECT_EQ(Status::OK, d.setThreshold(Register::SOVL, 0xfffe));
     EXPECT_EQ(0xfffeU, b.registers[0xc]);
     EXPECT_EQ(Status::INVALID_ARGUMENT, d.setThreshold(Register::VBUS, 1));
     EXPECT_EQ(Status::INVALID_ARGUMENT, d.setThreshold(Register::BOVL, 0x8000));
+    EXPECT_EQ(Status::OK, d.setThreshold(Register::BOVL, 0x7fff));
+    // TEMP_LIMIT is a full 16-bit two's-complement field (datasheet 7.6.1.17).
+    EXPECT_EQ(Status::OK, d.setThreshold(Register::TEMP_LIMIT, 0xfff5));
+    EXPECT_EQ(0xfff5U, b.registers[0x10]);
+    EXPECT_EQ(0U, b.illegalWrites);
 }
 INA229_TEST(InitializationFaultMatrixAndInvalidLifecycle) {
     for (int reg : {0, 1, 2, 3, 62, 63}) {
@@ -277,6 +285,169 @@ INA229_TEST(EveryAcquisitionTransferFailurePreservesOutput) {
         EXPECT_EQ(42, m.busVolts);
         EXPECT_EQ(0x55U, m.validMask);
     }
+}
+INA229_TEST(OverflowInvalidatesOnlyAffectedChannelsAndLatches) {
+    Bus b;
+    TestDelay delay;
+    Device d(b, delay);
+    EXPECT_EQ(Status::OK, d.initialize(Configuration()));
+    const std::uint8_t all = 127;
+    Measurement m;
+    // ENERGYOF: energy latched invalid; the read of ENERGY clears the device flag.
+    b.registers[0xb] = Diag::ENERGYOF | Diag::CNVRF | Diag::MEMSTAT;
+    b.registers[5] = 5120ULL << 4;
+    EXPECT_EQ(Status::OK, d.read(m));
+    EXPECT_EQ(all & ~Valid::ENERGY, m.validMask);
+    EXPECT_NEAR(1.0, m.busVolts, 1e-12);
+    EXPECT_EQ(0U, b.registers[0xb] & Diag::ENERGYOF);
+    b.registers[0xb] = Diag::CNVRF | Diag::MEMSTAT;
+    EXPECT_EQ(Status::OK, d.read(m));
+    EXPECT_EQ(all & ~Valid::ENERGY, m.validMask);
+    // CHARGEOF adds charge to the latch.
+    b.registers[0xb] = Diag::CHARGEOF | Diag::CNVRF | Diag::MEMSTAT;
+    EXPECT_EQ(Status::OK, d.read(m));
+    EXPECT_EQ(all & ~(Valid::ENERGY | Valid::CHARGE), m.validMask);
+    EXPECT_EQ(Valid::ENERGY | Valid::CHARGE, d.invalidAccumulators());
+    EXPECT_EQ(Status::OK, d.resetAccumulators());
+    EXPECT_EQ(0U, d.invalidAccumulators());
+    b.registers[0xb] = Diag::CNVRF | Diag::MEMSTAT;
+    EXPECT_EQ(Status::OK, d.read(m));
+    EXPECT_EQ(all, m.validMask);
+    // MATHOF: current and power invalid for this conversion; accumulators latched invalid.
+    b.registers[0xb] = Diag::MATHOF | Diag::CNVRF | Diag::MEMSTAT;
+    EXPECT_EQ(Status::OK, d.read(m));
+    EXPECT_EQ(Valid::BUS | Valid::SHUNT | Valid::TEMPERATURE, m.validMask);
+    b.registers[0xb] = Diag::CNVRF | Diag::MEMSTAT;
+    EXPECT_EQ(Status::OK, d.read(m));
+    EXPECT_EQ(all & ~(Valid::ENERGY | Valid::CHARGE), m.validMask);
+    // Reinitialization resets the device and the latch.
+    EXPECT_EQ(Status::OK, d.initialize(Configuration()));
+    b.registers[0xb] = Diag::CNVRF | Diag::MEMSTAT;
+    EXPECT_EQ(Status::OK, d.read(m));
+    EXPECT_EQ(all, m.validMask);
+    EXPECT_EQ(0U, b.illegalWrites);
+}
+INA229_TEST(OverflowSeenBeforeTransferFailureStaysLatched) {
+    Bus b;
+    TestDelay delay;
+    Device d(b, delay);
+    EXPECT_EQ(Status::OK, d.initialize(Configuration()));
+    b.registers[0xb] = Diag::ENERGYOF | Diag::CNVRF | Diag::MEMSTAT;
+    b.failReadAddress = 10; // ENERGY is read (clearing ENERGYOF), then CHARGE fails.
+    Measurement m;
+    m.validMask = 0x55;
+    EXPECT_EQ(Status::SPI_ERROR, d.read(m));
+    EXPECT_EQ(0x55U, m.validMask);
+    EXPECT_EQ(0U, b.registers[0xb] & Diag::ENERGYOF);
+    b.failReadAddress = -1;
+    b.registers[0xb] = Diag::CNVRF | Diag::MEMSTAT;
+    EXPECT_EQ(Status::OK, d.read(m));
+    EXPECT_EQ(127 & ~Valid::ENERGY, m.validMask);
+}
+INA229_TEST(ResetAccumulatorsDrainsStaleOverflowFlags) {
+    Bus b;
+    TestDelay delay;
+    Device d(b, delay);
+    EXPECT_EQ(Status::OK, d.initialize(Configuration()));
+    // Overflow occurred but was never observed by read(); reset must not leave it to re-latch.
+    b.registers[0xb] |= Diag::ENERGYOF | Diag::CHARGEOF | Diag::MATHOF;
+    EXPECT_EQ(Status::OK, d.resetAccumulators());
+    EXPECT_EQ(0U, b.registers[0xb] & (Diag::ENERGYOF | Diag::CHARGEOF | Diag::MATHOF));
+    b.registers[0xb] |= Diag::CNVRF;
+    Measurement m;
+    EXPECT_EQ(Status::OK, d.read(m));
+    EXPECT_EQ(127U, m.validMask);
+    // A failed drain keeps the latch and reports the transfer failure.
+    b.registers[0xb] = Diag::ENERGYOF | Diag::CNVRF | Diag::MEMSTAT;
+    EXPECT_EQ(Status::OK, d.read(m));
+    b.failReadAddress = 10;
+    EXPECT_EQ(Status::SPI_ERROR, d.resetAccumulators());
+    EXPECT_EQ(Valid::ENERGY, d.invalidAccumulators());
+    EXPECT_TRUE(d.isInitialized());
+}
+INA229_TEST(AlertConfigurationPreservesTrimStatusAndReadsSucceed) {
+    Bus b;
+    TestDelay delay;
+    Device d(b, delay);
+    EXPECT_EQ(Status::OK, d.initialize(Configuration()));
+    EXPECT_EQ(Status::OK, d.setAlertConfig(0x8000));
+    EXPECT_EQ(Diag::MEMSTAT, b.registers[0xb] & Diag::MEMSTAT);
+    b.registers[0xb] |= Diag::CNVRF;
+    Measurement m;
+    EXPECT_EQ(Status::OK, d.read(m));
+    // A real checksum error stays visible after a configuration write.
+    b.registers[0xb] &= ~std::uint64_t(Diag::MEMSTAT);
+    EXPECT_EQ(Status::OK, d.setAlertConfig(0x4000));
+    b.registers[0xb] |= Diag::CNVRF;
+    EXPECT_EQ(Status::DEVICE_ERROR, d.read(m));
+    b.failReadAddress = 11;
+    EXPECT_EQ(Status::SPI_ERROR, d.setAlertConfig(0));
+    EXPECT_TRUE(d.isInitialized());
+    EXPECT_EQ(0U, b.illegalWrites);
+}
+INA229_TEST(ImplausibleBusDataIsRejected) {
+    Bus b;
+    TestDelay delay;
+    Device d(b, delay);
+    EXPECT_EQ(Status::OK, d.initialize(Configuration()));
+    Measurement m;
+    m.busVolts = 42;
+    b.stuckHigh = true;
+    EXPECT_EQ(Status::DEVICE_ERROR, d.read(m));
+    EXPECT_EQ(42, m.busVolts);
+    EXPECT_EQ(0U, d.invalidAccumulators());
+    b.stuckHigh = false;
+    for (int reg : {4, 5, 7}) {
+        b.registers[0xb] = Diag::CNVRF | Diag::MEMSTAT;
+        b.registers[reg] = 0x000011;
+        EXPECT_EQ(Status::DEVICE_ERROR, d.read(m));
+        EXPECT_EQ(42, m.busVolts);
+        b.registers[reg] = 0;
+    }
+}
+INA229_TEST(RemainingValidationAndFaultBranches) {
+    Bus b;
+    TestDelay delay;
+    Device d(b, delay);
+    EXPECT_EQ(0U, d.expectedValidMask());
+    EXPECT_EQ(Status::INVALID_STATE, d.trigger());
+    AdcConfiguration adc;
+    for (int field = 0; field < 5; ++field) {
+        adc = AdcConfiguration();
+        if (field == 0)
+            adc.mode = 16;
+        if (field == 1)
+            adc.busTime = 8;
+        if (field == 2)
+            adc.shuntTime = 8;
+        if (field == 3)
+            adc.temperatureTime = 8;
+        if (field == 4)
+            adc.averaging = 8;
+        EXPECT_EQ(Status::INVALID_ARGUMENT, d.configureAdc(adc));
+    }
+    EXPECT_TRUE(b.transactions.empty());
+    b.registers[0x3e] = 0;
+    EXPECT_EQ(Status::IDENTITY_MISMATCH, d.initialize(Configuration()));
+    b.registers[0x3e] = 0x5449;
+    // The stop write succeeds; the final ADC_CONFIG write fails.
+    b.failWriteAddress = 1;
+    b.failWriteSkip = 1;
+    EXPECT_EQ(Status::SPI_ERROR, d.initialize(Configuration()));
+    EXPECT_FALSE(d.isInitialized());
+    b.failWriteAddress = -1;
+    EXPECT_EQ(Status::OK, d.initialize(Configuration()));
+    EXPECT_EQ(Status::INVALID_ARGUMENT, d.setThreshold(static_cast<Register>(18), 0));
+    EXPECT_EQ(Status::INVALID_ARGUMENT, d.setThreshold(Register::BUVL, 0x8000));
+    b.failReadAddress = 9;
+    EXPECT_EQ(Status::SPI_ERROR, d.resetAccumulators());
+    EXPECT_TRUE(d.isInitialized());
+    b.failReadAddress = -1;
+    b.ignoreWriteAddress = 0;
+    b.registers[0] = 0x1230;
+    EXPECT_EQ(Status::VERIFY_ERROR, d.resetAccumulators());
+    EXPECT_FALSE(d.isInitialized());
+    EXPECT_EQ(0U, b.illegalWrites);
 }
 int main() {
     return Ina229Test::runAll();
