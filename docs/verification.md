@@ -34,8 +34,11 @@ headers, because Homebrew LLVM 18 `clang-tidy` cannot parse the macOS 27 SDK.
   the state these logs describe; `python3 tests/check_evidence.py` fails on any drift.
 
 CI defines Linux and macOS host checks, Linux sanitizers/coverage, generated component
-and example builds, static analysis, the evidence check and strict docs. Its remote
-execution has not been observed. The tests require no USB device; they do not establish
+and example builds, static analysis, the evidence check and strict docs. The first
+remote run to pass every job was [run 36331162640](https://github.com/SiboVG/fprime-ina229/actions/runs/36331162640) on commit
+`4a762b2` (2026-09-27). The first attempt, [run 36330896032](https://github.com/SiboVG/fprime-ina229/actions/runs/36330896032), failed only the
+GCC branch-coverage gate, which that commit fixed by excluding exception edges. CI logs
+expire, so `docs/evidence/` remains the retained record. The tests require no USB device; they do not establish
 sensor accuracy or physical timing. Coverage is scoped to authored portable device code,
 not generated F Prime code or the whole deployment.
 
