@@ -9,15 +9,15 @@ ManagerTester::ManagerTester() : ManagerGTestBase("Tester", MAX_HISTORY_SIZE), c
     initComponents();
     connectPorts();
 }
-TransferStatus ManagerTester::from_spi_handler(NATIVE_INT_TYPE, Fw::Buffer &tx, Fw::Buffer &rx) {
+Drv::SpiStatus ManagerTester::from_spi_handler(FwIndexType, Fw::Buffer &tx, Fw::Buffer &rx) {
     if (failTransfer)
-        return TransferStatus::ERROR;
+        return Drv::SpiStatus::SPI_OTHER_ERR;
     if (shortTransfer) {
         rx.setSize(0);
-        return TransferStatus::OK;
+        return Drv::SpiStatus::SPI_OK;
     }
-    return bus.transfer(tx.getData(), rx.getData(), tx.getSize()) ? TransferStatus::OK
-                                                                  : TransferStatus::ERROR;
+    return bus.transfer(tx.getData(), rx.getData(), tx.getSize()) ? Drv::SpiStatus::SPI_OK
+                                                                  : Drv::SpiStatus::SPI_OTHER_ERR;
 }
 void ManagerTester::nominal() {
     EXPECT_EQ(DriverStatus::OK, invoke_to_configure(0, config()));
@@ -25,16 +25,16 @@ void ManagerTester::nominal() {
     bus.registers[5] = 5120ULL << 4;
     Reading r;
     EXPECT_EQ(DriverStatus::OK, invoke_to_read(0, r));
-    EXPECT_DOUBLE_EQ(1, r.getbusVolts());
-    EXPECT_EQ(127, r.getvalidMask());
+    EXPECT_DOUBLE_EQ(1, r.get_busVolts());
+    EXPECT_EQ(127, r.get_validMask());
     EXPECT_EQ(DriverStatus::NOT_READY, invoke_to_read(0, r));
-    EXPECT_DOUBLE_EQ(1, r.getbusVolts());
+    EXPECT_DOUBLE_EQ(1, r.get_busVolts());
     ASSERT_EVENTS_SIZE(0);
     EXPECT_EQ(0U, bus.illegalWrites);
 }
 void ManagerTester::failures() {
     Reading r;
-    r.setbusVolts(42);
+    r.set_busVolts(42);
     EXPECT_EQ(DriverStatus::INVALID_STATE, invoke_to_read(0, r));
     failTransfer = true;
     EXPECT_EQ(DriverStatus::SPI_ERROR, invoke_to_configure(0, config()));
@@ -44,7 +44,7 @@ void ManagerTester::failures() {
     failTransfer = true;
     EXPECT_EQ(DriverStatus::SPI_ERROR, invoke_to_read(0, r));
     EXPECT_EQ(DriverStatus::SPI_ERROR, invoke_to_read(0, r));
-    EXPECT_DOUBLE_EQ(42, r.getbusVolts());
+    EXPECT_DOUBLE_EQ(42, r.get_busVolts());
     ASSERT_EVENTS_OperationFailed_SIZE(1);
     ASSERT_EVENTS_OperationFailed(0, Operation::READ, DriverStatus::SPI_ERROR);
     failTransfer = false;
@@ -88,7 +88,7 @@ void ManagerTester::commands() {
     ASSERT_CMD_RESPONSE(8, Manager::OPCODE_STOP, 9, Fw::CmdResponse::OK);
     ASSERT_CMD_RESPONSE(9, Manager::OPCODE_REPORT, 10, Fw::CmdResponse::OK);
     bus.ignoreWriteAddress = 2;
-    c.setmaxCurrent(4);
+    c.set_maxCurrent(4);
     sendCmd_INITIALIZE(0, 11, c);
     ASSERT_CMD_RESPONSE(10, Manager::OPCODE_INITIALIZE, 11, Fw::CmdResponse::EXECUTION_ERROR);
     ASSERT_EVENTS_OperationFailed_SIZE(2);
@@ -152,7 +152,7 @@ void ManagerTester::intermittentFaultsAreRateLimited() {
 }
 void ManagerTester::validationErrorsAreNotDeviceFaults() {
     auto invalid = config();
-    invalid.setshuntOhms(0);
+    invalid.set_shuntOhms(0);
     sendCmd_INITIALIZE(0, 1, invalid);
     ASSERT_CMD_RESPONSE(0, Manager::OPCODE_INITIALIZE, 1, Fw::CmdResponse::VALIDATION_ERROR);
     EXPECT_TRUE(bus.transactions.empty());
@@ -177,12 +177,12 @@ void ManagerTester::overflowDegradesAndRestores() {
     Reading r;
     bus.registers[0xb] = Ina229::Diag::MATHOF | 3;
     ASSERT_EQ(DriverStatus::OK, invoke_to_read(0, r));
-    EXPECT_EQ(7, r.getvalidMask());
+    EXPECT_EQ(7, r.get_validMask());
     ASSERT_EVENTS_MeasurementDegraded_SIZE(1);
     ASSERT_EVENTS_MeasurementDegraded(0, 7, 127);
     bus.registers[0xb] = 3;
     ASSERT_EQ(DriverStatus::OK, invoke_to_read(0, r));
-    EXPECT_EQ(31, r.getvalidMask());
+    EXPECT_EQ(31, r.get_validMask());
     ASSERT_EVENTS_MeasurementDegraded_SIZE(2);
     bus.registers[0xb] = 3;
     ASSERT_EQ(DriverStatus::OK, invoke_to_read(0, r));
@@ -191,7 +191,7 @@ void ManagerTester::overflowDegradesAndRestores() {
     ASSERT_CMD_RESPONSE(0, Manager::OPCODE_RESET_ACCUMULATORS, 1, Fw::CmdResponse::OK);
     bus.registers[0xb] = 3;
     ASSERT_EQ(DriverStatus::OK, invoke_to_read(0, r));
-    EXPECT_EQ(127, r.getvalidMask());
+    EXPECT_EQ(127, r.get_validMask());
     ASSERT_EVENTS_MeasurementRestored_SIZE(1);
     ASSERT_EVENTS_MeasurementRestored(0, 127);
     ASSERT_EVENTS_OperationFailed_SIZE(0);

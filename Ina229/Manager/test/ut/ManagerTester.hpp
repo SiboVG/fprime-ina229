@@ -5,8 +5,8 @@
 namespace Ina229 {
 class ManagerTester final : public ManagerGTestBase {
   public:
-    static const NATIVE_INT_TYPE TEST_INSTANCE_ID = 0;
-    static const NATIVE_INT_TYPE MAX_HISTORY_SIZE = 1000;
+    static const FwEnumStoreType TEST_INSTANCE_ID = 0;
+    static const FwIndexType MAX_HISTORY_SIZE = 1000;
     ManagerTester();
     void nominal();
     void failures();
@@ -19,7 +19,7 @@ class ManagerTester final : public ManagerGTestBase {
   private:
     void connectPorts();
     void initComponents();
-    TransferStatus from_spi_handler(NATIVE_INT_TYPE portNum, Fw::Buffer &tx, Fw::Buffer &rx) override;
+    Drv::SpiStatus from_spi_handler(FwIndexType portNum, Fw::Buffer &tx, Fw::Buffer &rx) override;
     Ina229Test::Bus bus;
     bool failTransfer = false, shortTransfer = false;
     Manager component;

@@ -10,7 +10,7 @@ class BridgeDriver final : public BridgeDriverComponentBase {
     }
 
   private:
-    Ina229::TransferStatus exchange_handler(FwIndexType, Fw::Buffer &, Fw::Buffer &) override;
+    Drv::SpiStatus exchange_handler(FwIndexType, Fw::Buffer &, Fw::Buffer &) override;
     UnixSpi m_spi;
 };
 } // namespace Ina229Bench

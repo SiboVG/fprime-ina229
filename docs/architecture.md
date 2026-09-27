@@ -11,7 +11,7 @@ Mission application / scheduler / fault policy
              | owns
       Ina229::Device              register protocol and SI values
              | SpiBus::transfer + Delay::milliseconds
-      manager port adapter        synchronous status-bearing SpiTransfer
+      manager port adapter        Drv.SpiWriteRead (status-returning)
              |
       platform SPI driver         controller, bus arbitration, chip select, deadline
              |
@@ -39,8 +39,9 @@ if (status == Ina229::Status::OK) {
 ```
 
 In F Prime, the manager's adapter connects that same core to a generic byte-level
-port. A native driver must report transfer failure; a void SPI port cannot provide
-this guarantee on its own. A custom platform adapter may use a status-returning
+port, `Drv.SpiWriteRead`. The driver must report transfer failure through
+`Drv.SpiStatus`; the deprecated void `Drv.SpiReadWrite` port cannot provide this
+guarantee. A custom platform adapter may use a status-returning
 HAL/OS API internally. Implement one component instance per chip-select or carry
 bus/CS selection in the platform component configuration, outside INA229 registers.
 

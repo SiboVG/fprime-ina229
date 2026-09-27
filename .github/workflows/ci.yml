@@ -48,7 +48,7 @@ jobs:
       - uses: actions/checkout@v7
         with:
           repository: nasa/fprime
-          ref: v3.5.1
+          ref: 35d4c0e881482adf372b8eee3eb56ad2dee74618
           path: fprime
           submodules: recursive
           persist-credentials: false

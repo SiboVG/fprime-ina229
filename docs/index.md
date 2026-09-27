@@ -1,7 +1,8 @@
 # F Prime INA229
 
 A reusable C++11 driver for the TI INA229 voltage/current/power monitor with an
-F Prime 3.5.1 manager and an optional FT232H bench deployment.
+F Prime manager (tested with F Prime `35d4c0e`, v4.2.0-267) and an optional FT232H
+bench deployment.
 
 | Layer | Responsibility | Dependencies |
 | --- | --- | --- |
@@ -24,7 +25,7 @@ python3 -m unittest discover -s tests -p test_bridge.py
 ```
 
 The normal F Prime library registration includes no FT232H or Python dependencies.
-For a native SPI platform, supply the same status-bearing exchange contract; the
+For a native SPI platform, supply a driver that implements the status-returning `Drv.SpiWriteRead` port; the
 device and manager sources remain the same.
 
 This is candidate integration software. [Verification](verification.md) separates

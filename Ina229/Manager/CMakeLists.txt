@@ -1,5 +1,5 @@
 set(SOURCE_FILES "${CMAKE_CURRENT_LIST_DIR}/Manager.fpp" "${CMAKE_CURRENT_LIST_DIR}/Manager.cpp")
-set(MOD_DEPS Ina229_Device Ina229_Types Os)
+set(MOD_DEPS Ina229_Device Ina229_Types Drv_Ports Os)
 register_fprime_module()
 set(UT_SOURCE_FILES "${CMAKE_CURRENT_LIST_DIR}/Manager.fpp"
  "${CMAKE_CURRENT_LIST_DIR}/test/ut/ManagerTester.cpp"

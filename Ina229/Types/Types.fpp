@@ -21,11 +21,6 @@ module Ina229 {
     SET_THRESHOLD
     READ
   }
-  @ Completion of a generic synchronous SPI exchange.
-  enum TransferStatus { OK, ERROR }
-  @ Buffers are caller-owned and valid only for this synchronous call.
-  @ ERROR includes incomplete transfers. Successful drivers leave sizes unchanged.
-  port SpiTransfer(ref tx: Fw.Buffer, ref rx: Fw.Buffer) -> TransferStatus
   struct DeviceConfig {
     shuntOhms: F64
     maxCurrent: F64

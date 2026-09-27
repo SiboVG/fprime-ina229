@@ -1,5 +1,4 @@
 $ cmake --build build-components --target Ina229_Manager_ut_exe
-ld: warning: ignoring duplicate libraries: 'lib/Darwin/libFw_Cmd.a', 'lib/Darwin/libFw_Log.a', 'lib/Darwin/libFw_Time.a', 'lib/Darwin/libFw_Tlm.a'
 exit=0
 
 $ build-components/bin/Darwin/Ina229_Manager_ut_exe
@@ -7,22 +6,22 @@ $ build-components/bin/Darwin/Ina229_Manager_ut_exe
 [----------] Global test environment set-up.
 [----------] 7 tests from Manager
 [ RUN      ] Manager.Nominal
-[       OK ] Manager.Nominal (2 ms)
+[       OK ] Manager.Nominal (4 ms)
 [ RUN      ] Manager.Failures
-[       OK ] Manager.Failures (2 ms)
+[       OK ] Manager.Failures (4 ms)
 [ RUN      ] Manager.Commands
-[       OK ] Manager.Commands (5 ms)
+[       OK ] Manager.Commands (7 ms)
 [ RUN      ] Manager.AlertConfigurationKeepsReadsValid
-[       OK ] Manager.AlertConfigurationKeepsReadsValid (2 ms)
+[       OK ] Manager.AlertConfigurationKeepsReadsValid (3 ms)
 [ RUN      ] Manager.IntermittentFaultsAreRateLimited
-[       OK ] Manager.IntermittentFaultsAreRateLimited (5 ms)
+[       OK ] Manager.IntermittentFaultsAreRateLimited (9 ms)
 [ RUN      ] Manager.ValidationErrorsAreNotDeviceFaults
-[       OK ] Manager.ValidationErrorsAreNotDeviceFaults (2 ms)
+[       OK ] Manager.ValidationErrorsAreNotDeviceFaults (4 ms)
 [ RUN      ] Manager.OverflowDegradesAndRestores
-[       OK ] Manager.OverflowDegradesAndRestores (2 ms)
-[----------] 7 tests from Manager (25 ms total)
+[       OK ] Manager.OverflowDegradesAndRestores (4 ms)
+[----------] 7 tests from Manager (37 ms total)
 
 [----------] Global test environment tear-down
-[==========] 7 tests from 1 test suite ran. (25 ms total)
+[==========] 7 tests from 1 test suite ran. (37 ms total)
 [  PASSED  ] 7 tests.
 exit=0

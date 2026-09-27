@@ -4,7 +4,9 @@ module Ina229 {
   passive component Manager {
     guarded input port configure: Ina229.Configure
     guarded input port read: Ina229.Read
-    output port spi: Ina229.SpiTransfer
+    @ Standard status-returning F Prime SPI port. SPI_OK means the whole transfer completed
+    @ under one chip-select assertion with both buffers unchanged.
+    output port spi: Drv.SpiWriteRead
     guarded command INITIALIZE(config: Ina229.DeviceConfig)
     guarded command CONFIGURE_ADC(mode: U8, busTime: U8, shuntTime: U8, temperatureTime: U8, averaging: U8)
     guarded command TRIGGER

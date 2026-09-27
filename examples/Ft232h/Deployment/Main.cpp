@@ -35,7 +35,7 @@ int main(int argc, char **argv) {
         return 1;
     }
     Ina229::DeviceConfig config(shunt, current, false, false, 0, 0, 15, 0, 0, 0, 0);
-    const auto configured = Ina229Bench::sensor.get_configure_InputPort(0)->invoke(config);
+    const auto configured = Ina229Bench::client.configureSensor(config);
     if (configured != Ina229::DriverStatus::OK) {
         std::cerr << "INA229 initialization failed, status=" << configured.e << '\n';
         return 1;
@@ -46,7 +46,7 @@ int main(int argc, char **argv) {
         Ina229::Reading reading;
         Ina229::DriverStatus status = Ina229::DriverStatus::NOT_READY;
         for (unsigned attempt = 0; attempt < 100; ++attempt) {
-            status = Ina229Bench::sensor.get_read_InputPort(0)->invoke(reading);
+            status = Ina229Bench::client.readSensor(reading);
             if (status != Ina229::DriverStatus::NOT_READY)
                 break;
             if (!waitMs(10)) {
@@ -58,10 +58,10 @@ int main(int argc, char **argv) {
             std::cerr << "INA229 acquisition failed, status=" << status.e << '\n';
             return 1;
         }
-        std::cout << i << ',' << static_cast<unsigned>(reading.getvalidMask()) << ',' << reading.getbusVolts()
-                  << ',' << reading.getshuntVolts() << ',' << reading.gettemperatureC() << ','
-                  << reading.getcurrentAmps() << ',' << reading.getpowerWatts() << ','
-                  << reading.getenergyJoules() << ',' << reading.getchargeCoulombs() << std::endl;
+        std::cout << i << ',' << static_cast<unsigned>(reading.get_validMask()) << ',' << reading.get_busVolts()
+                  << ',' << reading.get_shuntVolts() << ',' << reading.get_temperatureC() << ','
+                  << reading.get_currentAmps() << ',' << reading.get_powerWatts() << ','
+                  << reading.get_energyJoules() << ',' << reading.get_chargeCoulombs() << std::endl;
         if (i + 1 < static_cast<unsigned>(requested) && !waitMs(100))
             return 1;
     }

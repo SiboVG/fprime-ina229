@@ -9,8 +9,8 @@ TBD". The rationale column records why the requirement exists until that trace i
 ## Evidence recorded on 2026-09-27
 
 Executed locally on macOS 27.0 (arm64) with Apple clang 21.0.0, the Command Line Tools 27
-linker, and the default macOS 27 SDK, using F Prime 3.5.1 and fpp 2.2.1 from its
-platform-independent (JVM) wheels, installed by `tools/workspace/bootstrap-fprime-venv.sh`.
+linker, and the default macOS 27 SDK, using F Prime `35d4c0e` (v4.2.0-267), its native
+fpp 3.3.0a12 and host CMake 4.0.2, installed by `tools/workspace/bootstrap-fprime-venv.sh`.
 No SDK pin or Rosetta was used for any build. Only the static analysis used older SDK
 headers, because Homebrew LLVM 18 `clang-tidy` cannot parse the macOS 27 SDK.
 
@@ -27,15 +27,15 @@ headers, because Homebrew LLVM 18 `clang-tidy` cannot parse the macOS 27 SDK.
 - `clang-tidy` (clang-analyzer checks, warnings as errors) reports no findings in
   `Device.cpp` or `Manager.cpp` ([static-analysis log](evidence/static-analysis.txt)).
 - Strict compiler warnings are errors for authored C++ sources; generated framework
-  sources retain their framework flags. The macOS F Prime link emits duplicate-library
-  warnings from generated target dependencies.
+  sources retain their framework flags. The component and deployment builds emit no
+  warnings.
 - The documentation builds with strict MkDocs validation.
 - `docs/evidence/source-sha256.json` pins every authored source, test and build file at
   the state these logs describe; `python3 tests/check_evidence.py` fails on any drift.
 
 CI defines Linux and macOS host checks, Linux sanitizers/coverage, generated component
-and example builds, static analysis, the evidence check and strict docs. The first
-remote run to pass every job was [run 36331162640](https://github.com/SiboVG/fprime-ina229/actions/runs/36331162640) on commit
+and example builds, static analysis, the evidence check and strict docs. Before the move to
+F Prime `35d4c0e`, the first remote run to pass every job was [run 36331162640](https://github.com/SiboVG/fprime-ina229/actions/runs/36331162640) on commit
 `4a762b2` (2026-09-27). The first attempt, [run 36330896032](https://github.com/SiboVG/fprime-ina229/actions/runs/36330896032), failed only the
 GCC branch-coverage gate, which that commit fixed by excluding exception edges. CI logs
 expire, so `docs/evidence/` remains the retained record. The tests require no USB device; they do not establish
@@ -81,6 +81,13 @@ PyFtdi; the F Prime topology, C++ bridge and Python framing code are real.
 | INA-HIL-006 | Qualify the target toolchain and OS, component-mutex hold time against the scheduler deadline, shared-bus arbitration, stack usage, telemetry bandwidth, watchdog budget and application timestamps under load. |
 
 These open activities prevent any claim of flight qualification or completed HIL.
+
+The TE0715 sensor bench (ZephyrOSTe0715 repository, `docs/tests/ina229.md`) runs the
+manager unchanged on a Zynq-7000 with Zephyr's SPI driver and has procedures for
+INA-HIL-001 (waveforms, reset and readback), INA-HIL-002 (one operating point per run),
+and parts of INA-HIL-003 to INA-HIL-006 (continuous acquisition, accumulator reset,
+MEMSTAT after the alert read-modify-write, MISO and supply faults, read duration). An
+activity closes only with a reviewed as-run record.
 
 ## Reproduce
 

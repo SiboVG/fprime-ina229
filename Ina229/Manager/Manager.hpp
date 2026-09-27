@@ -10,7 +10,7 @@ class Manager final : public ManagerComponentBase {
     // All handlers run with the component mutex held (guarded ports and commands).
     DriverStatus configure_handler(FwIndexType, const DeviceConfig &) override;
     DriverStatus read_handler(FwIndexType, Reading &) override;
-    void INITIALIZE_cmdHandler(FwOpcodeType, U32, DeviceConfig) override;
+    void INITIALIZE_cmdHandler(FwOpcodeType, U32, const DeviceConfig &) override;
     void CONFIGURE_ADC_cmdHandler(FwOpcodeType, U32, U8, U8, U8, U8, U8) override;
     void TRIGGER_cmdHandler(FwOpcodeType, U32) override;
     void STOP_cmdHandler(FwOpcodeType, U32) override;

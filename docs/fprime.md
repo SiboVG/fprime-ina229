@@ -1,12 +1,13 @@
 # F Prime integration
 
-The tested API is F Prime 3.5.1. Activate that checkout's Python tool chain before
+The tested API is F Prime `35d4c0e` (v4.2.0-267). Activate that checkout's Python tool chain before
 CMake generation.
 
 ## F Prime tool chain
 
-Component tests and deployments need the Python tools pinned by the F Prime 3.5.1
-checkout, including fpp 2.2.1. In the CubeSpec workspace, create that environment with:
+Component tests and deployments need the Python tools pinned by the F Prime checkout at
+the tested revision, `35d4c0e881482adf372b8eee3eb56ad2dee74618` (v4.2.0-267), the same revision fprime-csp-libparam and the
+TE0715 Zephyr workspace use. In the CubeSpec workspace, create that environment with:
 
 ```sh
 tools/workspace/bootstrap-fprime-venv.sh --fprime /absolute/path/to/fprime --venv .venv-fprime
@@ -18,17 +19,18 @@ Outside the workspace, the equivalent is:
 ```sh
 python3 -m venv .venv-fprime && . .venv-fprime/bin/activate
 python -m pip install -r /absolute/path/to/fprime/requirements.txt
-# macOS only: fpp's macOS wheels contain x86_64 executables, so install the same
-# release's platform-independent (JVM) wheels instead. Requires Java 17 or newer.
-python -m pip download --no-deps --only-binary=:all: --platform any -d fpp-wheels \
-  $(grep -o '^fprime-fpp-[a-z-]*==[^ ;#]*' /absolute/path/to/fprime/requirements.txt)
-python -m pip install --force-reinstall --no-deps fpp-wheels/*.whl
+# macOS only: the pinned CMake 3.26.0 fails inside F Prime's build on macOS 27,
+# so remove it and use a newer host CMake (for example from Homebrew).
+python -m pip uninstall -y cmake
 ```
 
-Linux hosts use fpp's native wheels. The macOS JVM wheels run the same fpp release, so
-every host generates identical code. If a macOS link fails with `tapi error: malformed
-file`, the selected Xcode is older than the default SDK: update Xcode, or select the
-matching Command Line Tools with `sudo xcode-select -s /Library/Developer/CommandLineTools`.
+This revision pins fpp 3.3.0a12, which has native builds for Linux (x86_64 and aarch64)
+and macOS (arm64 and x86_64), so every host runs the same fpp release natively. The
+bootstrap script also handles older F Prime checkouts whose fpp has no native build for
+the host, by installing that release's platform-independent (JVM) wheels. If a macOS
+link fails with `tapi error: malformed file`, the selected Xcode is older than the
+default SDK: update Xcode, or select the matching Command Line Tools with
+`sudo xcode-select -s /Library/Developer/CommandLineTools`.
 
 ## Consumer registration
 
@@ -49,19 +51,19 @@ these modules; examples and their dependencies are never pulled into flight code
 Application / scheduler / fault policy
   configure: Ina229.Configure -> Manager.configure
   read: Ina229.Read           -> Manager.read
-                                 Manager.spi: Ina229.SpiTransfer
+                                 Manager.spi: Drv.SpiWriteRead
                                    -> platform generic SPI driver
                                        -> hardware SPI / one chip select
 ```
 
-`SpiTransfer(ref Fw.Buffer tx, ref Fw.Buffer rx) -> TransferStatus` is a generic
-full-duplex transaction contract. Return OK only after the entire transfer
-completes under one CS assertion. Drivers must not retain or replace pointers
-or change buffer sizes. A short transfer must return ERROR. The manager checks
-status, sizes and pointer identity. Use a native controller driver on the flight
-target; FT232H and the example's Unix bridge can be replaced without changing
-sensor code. A void-returning `Drv.SpiReadWrite` port cannot satisfy this error
-contract by simply returning OK after invocation.
+The manager's `spi` output is F Prime's standard `Drv.SpiWriteRead(ref writeBuffer,
+ref readBuffer) -> Drv.SpiStatus`. The driver must return `SPI_OK` only after the entire
+transfer completes under one chip-select assertion, and must not retain or replace the
+buffer pointers or change their sizes. The manager treats any other status, or a changed
+buffer, as a failed transfer. `Drv.LinuxSpiDriver`, fprime-zephyr's `ZephyrSpiDriver`,
+and the example's Unix bridge all implement this port, so sensor code does not change
+between platforms. The deprecated void `Drv.SpiReadWrite` port cannot report failures and
+is not used.
 
 `Configure(config: DeviceConfig)` takes its argument by value: the manager copies the
 configuration and never writes to the caller's object. `Read(ref sample: Reading)`

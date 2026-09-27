@@ -6,17 +6,17 @@ namespace Ina229 {
 namespace {
 Configuration toCore(const DeviceConfig &config) {
     Configuration c;
-    c.shuntOhms = config.getshuntOhms();
-    c.maxCurrent = config.getmaxCurrent();
-    c.narrowRange = config.getnarrowRange();
-    c.temperatureCompensation = config.gettemperatureCompensation();
-    c.conversionDelaySteps = config.getconversionDelaySteps();
-    c.shuntTempco = config.getshuntTempco();
-    c.adc.mode = config.getmode();
-    c.adc.busTime = config.getbusTime();
-    c.adc.shuntTime = config.getshuntTime();
-    c.adc.temperatureTime = config.gettemperatureTime();
-    c.adc.averaging = config.getaveraging();
+    c.shuntOhms = config.get_shuntOhms();
+    c.maxCurrent = config.get_maxCurrent();
+    c.narrowRange = config.get_narrowRange();
+    c.temperatureCompensation = config.get_temperatureCompensation();
+    c.conversionDelaySteps = config.get_conversionDelaySteps();
+    c.shuntTempco = config.get_shuntTempco();
+    c.adc.mode = config.get_mode();
+    c.adc.busTime = config.get_busTime();
+    c.adc.shuntTime = config.get_shuntTime();
+    c.adc.temperatureTime = config.get_temperatureTime();
+    c.adc.averaging = config.get_averaging();
     return c;
 }
 } // namespace
@@ -24,10 +24,10 @@ Manager::Manager(const char *name) : ManagerComponentBase(name), m_bus(*this), m
 bool Manager::PortBus::transfer(const std::uint8_t *tx, std::uint8_t *rx, std::size_t size) {
     if (!tx || !rx || size == 0 || size > 6 || !m_owner.isConnected_spi_OutputPort(0))
         return false;
-    Fw::Buffer writeBuffer(const_cast<U8 *>(tx), static_cast<U32>(size));
-    Fw::Buffer readBuffer(rx, static_cast<U32>(size));
+    Fw::Buffer writeBuffer(const_cast<U8 *>(tx), static_cast<FwSizeType>(size));
+    Fw::Buffer readBuffer(rx, static_cast<FwSizeType>(size));
     const auto status = m_owner.spi_out(0, writeBuffer, readBuffer);
-    return status == TransferStatus::OK && readBuffer.getSize() == size && writeBuffer.getSize() == size &&
+    return status == Drv::SpiStatus::SPI_OK && readBuffer.getSize() == size && writeBuffer.getSize() == size &&
            readBuffer.getData() == rx && writeBuffer.getData() == tx;
 }
 bool Manager::OsDelay::milliseconds(std::uint32_t duration) {
@@ -112,22 +112,22 @@ Status Manager::acquire(Reading &sample) {
     Measurement m;
     const auto status = m_device.read(m);
     if (status == Status::OK) {
-        sample.setbusVolts(m.busVolts);
-        sample.setshuntVolts(m.shuntVolts);
-        sample.settemperatureC(m.temperatureC);
-        sample.setcurrentAmps(m.currentAmps);
-        sample.setpowerWatts(m.powerWatts);
-        sample.setenergyJoules(m.energyJoules);
-        sample.setchargeCoulombs(m.chargeCoulombs);
-        sample.setrawShunt(m.rawShunt);
-        sample.setrawBus(m.rawBus);
-        sample.setrawTemperature(m.rawTemperature);
-        sample.setrawCurrent(m.rawCurrent);
-        sample.setrawPower(m.rawPower);
-        sample.setrawEnergy(m.rawEnergy);
-        sample.setrawCharge(m.rawCharge);
-        sample.setdiagnostics(m.diagnostics);
-        sample.setvalidMask(m.validMask);
+        sample.set_busVolts(m.busVolts);
+        sample.set_shuntVolts(m.shuntVolts);
+        sample.set_temperatureC(m.temperatureC);
+        sample.set_currentAmps(m.currentAmps);
+        sample.set_powerWatts(m.powerWatts);
+        sample.set_energyJoules(m.energyJoules);
+        sample.set_chargeCoulombs(m.chargeCoulombs);
+        sample.set_rawShunt(m.rawShunt);
+        sample.set_rawBus(m.rawBus);
+        sample.set_rawTemperature(m.rawTemperature);
+        sample.set_rawCurrent(m.rawCurrent);
+        sample.set_rawPower(m.rawPower);
+        sample.set_rawEnergy(m.rawEnergy);
+        sample.set_rawCharge(m.rawCharge);
+        sample.set_diagnostics(m.diagnostics);
+        sample.set_validMask(m.validMask);
         ++m_samples;
         recordValidity(m.validMask, m_device.expectedValidMask());
     }
@@ -142,7 +142,7 @@ DriverStatus Manager::configure_handler(FwIndexType, const DeviceConfig &config)
 DriverStatus Manager::read_handler(FwIndexType, Reading &sample) {
     return convert(acquire(sample));
 }
-void Manager::INITIALIZE_cmdHandler(FwOpcodeType op, U32 seq, DeviceConfig config) {
+void Manager::INITIALIZE_cmdHandler(FwOpcodeType op, U32 seq, const DeviceConfig &config) {
     respond(op, seq, Operation::INITIALIZE, initialize(config));
 }
 void Manager::CONFIGURE_ADC_cmdHandler(FwOpcodeType op, U32 seq, U8 mode, U8 busTime, U8 shuntTime,

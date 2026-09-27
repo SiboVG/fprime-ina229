@@ -15,7 +15,7 @@ Preserve the manager/device/driver separation and the hardware-independent
 allocation, locks and scheduling. The manager's commands and ports stay `guarded`;
 long-running work belongs in the application, not in the manager.
 
-Create the F Prime 3.5.1 tool chain with `../../tools/workspace/bootstrap-fprime-venv.sh`
+Create the tool chain for the pinned F Prime revision (`35d4c0e`) with `../../tools/workspace/bootstrap-fprime-venv.sh`
 or the equivalent commands in `docs/fprime.md`; do not pin a macOS SDK or rely on Rosetta.
 Before handing off a change, run the host tests, sanitizers, coverage gate, the generated
 manager test executable, the FT232H deployment test, `clang-tidy`, and a strict MkDocs
