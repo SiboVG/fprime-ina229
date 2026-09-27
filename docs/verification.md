@@ -105,8 +105,13 @@ cmake --build build-coverage
 ctest --test-dir build-coverage --output-on-failure
 python -m gcovr --root . --object-directory build-coverage \
   --filter 'Ina229/Device/' --txt --txt-metric branch --txt-summary \
+  --exclude-throw-branches --exclude-unreachable-branches \
   --fail-under-line 90 --fail-under-branch 90
 ```
+
+GCC counts an exception edge on every call that could throw; the library uses no
+exceptions, so those edges are excluded (GCC 14 measures 89.1% without and 98.9% with
+the exclusion; Apple Clang reports no such edges).
 
 With Apple Clang, add `--gcov-executable "xcrun llvm-cov gcov"` to gcovr.
 Remove old `.gcda` files from that build directory after changing coverage sources.

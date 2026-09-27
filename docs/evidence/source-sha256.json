@@ -1,6 +1,6 @@
 {
   ".clang-tidy": "66dce7fcb4682e0e568e3b64878fbeb236bd51efc4cd47baaaa0aed76de7085c",
-  ".github/workflows/ci.yml": "3609627693aabf0d0e68b1f43f992ecd7e91f76ec13ab428874d2111df0bf34c",
+  ".github/workflows/ci.yml": "3969665e1a6615d401ef93263550bd5330c55e5fe2906bc9c1844f9c9f6a857b",
   "Ina229/Device/CMakeLists.txt": "9595ae5e72a516cc81bfe7d5dfb8e58bddd5e6557dc42bb7c4efd79a1365b485",
   "Ina229/Device/Device.cpp": "e1b6f9794c129d1eaac97734f2bb15e30980e3c1372dc09f5e47b49d69d4ea65",
   "Ina229/Device/Device.hpp": "ca7436d449ffa7ed5a467be0f497e4622d282e7127fa4b6dfb2900e586836bd3",
