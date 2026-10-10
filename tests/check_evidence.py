@@ -13,7 +13,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 MANIFEST = ROOT / "docs/evidence/source-sha256.json"
 PATTERNS = ("Ina229/**/*", "tests/**/*", "examples/**/*", "library.cmake", ".clang-tidy",
-            ".github/workflows/ci.yml")
+            "static-analysis.toml", "scripts/**/*", ".github/workflows/ci.yml")
 
 
 def sources():

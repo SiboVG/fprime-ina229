@@ -15,7 +15,7 @@ Test project build-san
     Start 2: ina229_bridge
 2/2 Test #2: ina229_bridge ....................   Passed    0.04 sec
 
-100% tests passed, 0 tests failed out of 2
+100% tests passed out of 2
 
-Total Test time (real) =   0.05 sec
+Total Test time (real) =   0.06 sec
 exit=0

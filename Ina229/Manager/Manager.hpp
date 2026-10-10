@@ -1,4 +1,5 @@
-#pragma once
+#ifndef INA229_MANAGER_MANAGER_HPP
+#define INA229_MANAGER_MANAGER_HPP
 #include "Ina229/Device/Device.hpp"
 #include "Ina229/Manager/ManagerComponentAc.hpp"
 namespace Ina229 {
@@ -37,9 +38,9 @@ class Manager final : public ManagerComponentBase {
     // Unlocked helpers: callers already hold the (non-recursive) component mutex.
     Status initialize(const DeviceConfig &);
     Status acquire(Reading &);
-    void record(Operation, Status);
+    void record(const Operation &, Status);
     void recordValidity(U8 valid, U8 expected);
-    void respond(FwOpcodeType, U32, Operation, Status);
+    void respond(FwOpcodeType, U32, const Operation &, Status);
     void clearThrottles();
     PortBus m_bus;
     OsDelay m_delay;
@@ -50,3 +51,4 @@ class Manager final : public ManagerComponentBase {
     U8 m_degradedMask = 0;
 };
 } // namespace Ina229
+#endif // INA229_MANAGER_MANAGER_HPP

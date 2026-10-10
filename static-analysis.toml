@@ -1,0 +1,57 @@
+# CubeSpec static-analysis gate (cppcheck + clang-tidy); run with
+#   python3 scripts/static_analysis.py
+# scripts/static_analysis.py, scripts/install-cppcheck.sh, scripts/clang-tidy
+# and .clang-tidy are vendored byte-identical from the workspace reference
+# (tools/static-analysis/); only this file is repository specific.
+#
+# Only first-party production code is analysed: the portable device core
+# (Ina229/Device), the F Prime manager (Ina229/Manager) and the FT232H bench
+# example (examples/Ft232h: socket transport, driver, client and deployment
+# main). Test code (tests/, Ina229/*/test/) is verified by execution, and F Prime
+# autocode (*Ac.cpp, *Ac.hpp) and the F Prime framework are not analysed.
+
+# Both builds run on Linux and macOS. The ft232h build needs the F Prime tool
+# chain for the pinned revision 35d4c0e (docs/fprime.md).
+local_builds = ["host", "ft232h"]
+
+# Portable host-test tree: the device core and the POSIX socket transport,
+# compiled with the host compiler and no F Prime.
+[[build]]
+name = "host"
+dir = "build-static"
+configure = ["cmake", "-S", "tests", "-B", "build-static", "-G", "Ninja",
+             "-DCMAKE_BUILD_TYPE=Debug", "-DCMAKE_EXPORT_COMPILE_COMMANDS=ON"]
+include = ["Ina229/**", "examples/**"]
+exclude = ["tests/**", "**/test/**"]
+
+# Generated FT232H deployment: device core, manager and every example source.
+# clang-tidy needs the generated *Ac.hpp headers, so configuring also builds the
+# topology library (Deployment_Top), which generates and compiles every module
+# the deployment links; the executable itself is built by the deployment test.
+# FPRIME_FRAMEWORK_PATH selects the F Prime checkout (default: the workspace's
+# third-party/upstream/fprime); a repository-local .venv-fprime made by
+# tools/workspace/bootstrap-fprime-venv.sh is activated when present.
+#
+# cppcheck defines no compiler macros. F Prime's Fw/Types/BasicTypes.h and
+# Platform/PlatformTypes.h stop with #error without __GNUC__ (defined by GCC and
+# Clang) and __SIZEOF_POINTER__ (8 on the 64-bit Linux and macOS hosts), which
+# would stop the analysis of every F Prime translation unit, so both are defined.
+# The runner counts cppcheck findings only in first-party files; findings in an
+# F Prime checkout outside the repository and in generated build-tree headers
+# are ignored. CI checks F Prime out inside the repository (fprime/), so that
+# path is listed in suppress_paths.
+[[build]]
+name = "ft232h"
+dir = "build-ft232h"
+configure = ["sh", "-c", """
+set -e
+if [ -f .venv-fprime/bin/activate ]; then . .venv-fprime/bin/activate; fi
+fprime=${FPRIME_FRAMEWORK_PATH:-$PWD/../../third-party/upstream/fprime}
+cmake -S examples/Ft232h -B build-ft232h -G Ninja -DFPRIME_FRAMEWORK_PATH="$fprime" \
+    -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+cmake --build build-ft232h --target Deployment_Top
+"""]
+include = ["Ina229/**", "examples/**"]
+exclude = ["tests/**", "**/test/**"]
+suppress_paths = ["fprime/*"]
+cppcheck_args = ["-D__GNUC__", "-D__SIZEOF_POINTER__=8"]

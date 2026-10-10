@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
-#pragma once
+#ifndef INA229_DEVICE_DEVICE_HPP
+#define INA229_DEVICE_DEVICE_HPP
 #include <cstddef>
 #include <cstdint>
 namespace Ina229 {
@@ -120,3 +121,4 @@ class Device final {
     std::uint8_t m_invalidAccumulators = 0;
 };
 } // namespace Ina229
+#endif // INA229_DEVICE_DEVICE_HPP

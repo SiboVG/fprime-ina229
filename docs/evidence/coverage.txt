@@ -1,4 +1,4 @@
-$ gcovr --root . --object-directory build-coverage --filter 'Ina229/Device/' --txt --txt-summary --fail-under-line 90 --fail-under-branch 90
+$ python3 -m gcovr --gcov-executable "xcrun llvm-cov gcov" --root . --object-directory build-coverage --filter 'Ina229/Device/' --txt --txt-summary --exclude-throw-branches --exclude-unreachable-branches --fail-under-line 90 --fail-under-branch 90
 (INFO) Reading coverage data...
 (INFO) Writing coverage report...
 ------------------------------------------------------------------------------
@@ -8,7 +8,7 @@ Directory: .
 File                                       Lines    Exec  Cover   Missing
 ------------------------------------------------------------------------------
 Ina229/Device/Device.cpp                     217     217   100%
-Ina229/Device/Device.hpp                      10       0     0%   59-67,69
+Ina229/Device/Device.hpp                      10       0     0%   60-68,70
 ------------------------------------------------------------------------------
 TOTAL                                        227     217    95%
 ------------------------------------------------------------------------------
@@ -17,7 +17,7 @@ functions: 94.4% (17 out of 18)
 branches: 98.6% (145 out of 147)
 exit=0
 
-$ gcovr --root . --object-directory build-coverage --filter 'Ina229/Device/' --txt --txt-metric branch
+$ python3 -m gcovr --gcov-executable "xcrun llvm-cov gcov" --root . --object-directory build-coverage --filter 'Ina229/Device/' --txt --txt-metric branch --exclude-throw-branches --exclude-unreachable-branches
 (INFO) Reading coverage data...
 (INFO) Writing coverage report...
 ------------------------------------------------------------------------------

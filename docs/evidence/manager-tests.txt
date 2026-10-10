@@ -8,15 +8,15 @@ $ build-components/bin/Darwin/Ina229_Manager_ut_exe
 [ RUN      ] Manager.Nominal
 [       OK ] Manager.Nominal (4 ms)
 [ RUN      ] Manager.Failures
-[       OK ] Manager.Failures (4 ms)
+[       OK ] Manager.Failures (3 ms)
 [ RUN      ] Manager.Commands
 [       OK ] Manager.Commands (7 ms)
 [ RUN      ] Manager.AlertConfigurationKeepsReadsValid
-[       OK ] Manager.AlertConfigurationKeepsReadsValid (3 ms)
+[       OK ] Manager.AlertConfigurationKeepsReadsValid (4 ms)
 [ RUN      ] Manager.IntermittentFaultsAreRateLimited
 [       OK ] Manager.IntermittentFaultsAreRateLimited (9 ms)
 [ RUN      ] Manager.ValidationErrorsAreNotDeviceFaults
-[       OK ] Manager.ValidationErrorsAreNotDeviceFaults (4 ms)
+[       OK ] Manager.ValidationErrorsAreNotDeviceFaults (3 ms)
 [ RUN      ] Manager.OverflowDegradesAndRestores
 [       OK ] Manager.OverflowDegradesAndRestores (4 ms)
 [----------] 7 tests from Manager (37 ms total)

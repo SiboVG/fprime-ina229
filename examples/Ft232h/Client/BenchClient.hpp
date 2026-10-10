@@ -1,4 +1,5 @@
-#pragma once
+#ifndef INA229BENCH_CLIENT_BENCHCLIENT_HPP
+#define INA229BENCH_CLIENT_BENCHCLIENT_HPP
 #include "Client/BenchClientComponentAc.hpp"
 namespace Ina229Bench {
 class BenchClient final : public BenchClientComponentBase {
@@ -8,3 +9,4 @@ class BenchClient final : public BenchClientComponentBase {
     Ina229::DriverStatus readSensor(Ina229::Reading &reading);
 };
 } // namespace Ina229Bench
+#endif // INA229BENCH_CLIENT_BENCHCLIENT_HPP

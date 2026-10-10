@@ -1,11 +1,12 @@
-#pragma once
+#ifndef INA229BENCH_UNIXSPI_HPP
+#define INA229BENCH_UNIXSPI_HPP
 #include "Ina229/Device/Device.hpp"
 namespace Ina229Bench {
 // Host-only transport for the local Python SPI server; owns its connected socket.
 class UnixSpi final : public Ina229::SpiBus {
   public:
     explicit UnixSpi(int connectedFd = -1, unsigned timeoutMs = 1000);
-    ~UnixSpi();
+    ~UnixSpi() override;
     UnixSpi(const UnixSpi &) = delete;
     UnixSpi &operator=(const UnixSpi &) = delete;
     bool open(const char *path, unsigned timeoutMs = 1000);
@@ -17,3 +18,4 @@ class UnixSpi final : public Ina229::SpiBus {
     unsigned m_timeout;
 };
 } // namespace Ina229Bench
+#endif // INA229BENCH_UNIXSPI_HPP

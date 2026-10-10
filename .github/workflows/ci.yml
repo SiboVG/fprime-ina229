@@ -62,17 +62,41 @@ jobs:
           -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
       - run: cmake --build build-components --target Ina229_Manager_ut_exe --parallel 4
       - run: build-components/bin/Linux/Ina229_Manager_ut_exe
-      - run: sudo apt-get update && sudo apt-get install -y clang-tidy
-      - name: Static analysis of authored flight sources
-        run: >-
-          clang-tidy -p build-components --warnings-as-errors='clang-analyzer-*'
-          --extra-arg=-Wno-unknown-warning-option
-          Ina229/Device/Device.cpp Ina229/Manager/Manager.cpp
       - run: >-
           cmake -S examples/Ft232h -B build-ft232h
           -DFPRIME_FRAMEWORK_PATH="$GITHUB_WORKSPACE/fprime"
       - run: cmake --build build-ft232h --target Deployment --parallel 4
       - run: INA229_DEMO="$PWD/build-ft232h/bin/Linux/Deployment" python tests/test_deployment.py
+  static-analysis:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/checkout@v7
+        with:
+          repository: nasa/fprime
+          ref: 35d4c0e881482adf372b8eee3eb56ad2dee74618
+          path: fprime
+          submodules: recursive
+          persist-credentials: false
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.11'
+      - run: python -m pip install -r fprime/requirements.txt
+      - run: sudo apt-get update && sudo apt-get install -y ninja-build
+      - name: Cache pinned cppcheck
+        uses: actions/cache@v6
+        with:
+          path: ~/.local/cppcheck-2.22.0
+          key: cppcheck-2.22.0-${{ runner.os }}-${{ runner.arch }}
+      - name: Install pinned cppcheck and clang-tidy
+        run: |
+          sh scripts/install-cppcheck.sh
+          echo "CPPCHECK=$HOME/.local/cppcheck-2.22.0/bin/cppcheck" >> "$GITHUB_ENV"
+          pipx install clang-tidy==22.1.8
+      - name: Static analysis (cppcheck + clang-tidy, zero findings)
+        env:
+          FPRIME_FRAMEWORK_PATH: ${{ github.workspace }}/fprime
+        run: python3 scripts/static_analysis.py --build host --build ft232h
   docs:
     runs-on: ubuntu-24.04
     steps:

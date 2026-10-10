@@ -63,7 +63,7 @@ void Manager::clearThrottles() {
     log_WARNING_HI_MeasurementDegraded_ThrottleClear();
     log_ACTIVITY_LO_MeasurementRestored_ThrottleClear();
 }
-void Manager::record(Operation operation, Status status) {
+void Manager::record(const Operation &operation, Status status) {
     // Polling before conversion completes is routine, not a fault or recovery.
     if (status == Status::NOT_READY)
         return;
@@ -90,7 +90,7 @@ void Manager::recordValidity(U8 valid, U8 expected) {
         m_degraded = false;
     }
 }
-void Manager::respond(FwOpcodeType opcode, U32 sequence, Operation operation, Status status) {
+void Manager::respond(FwOpcodeType opcode, U32 sequence, const Operation &operation, Status status) {
     // A rejected ground argument or an out-of-sequence command is not a device fault: the command
     // response and the command dispatcher's opcode-error event are the operator evidence.
     if (status != Status::INVALID_ARGUMENT && status != Status::INVALID_STATE)

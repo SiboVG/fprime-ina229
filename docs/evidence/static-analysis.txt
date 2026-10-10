@@ -1,7 +1,25 @@
-$ clang-tidy --version
-Homebrew LLVM version 18.1.8
-  Optimized build.
-$ clang-tidy -p build-components --warnings-as-errors='clang-analyzer-*' --extra-arg=-nostdinc++ --extra-arg=-isystem<llvm@18>/include/c++/v1 --extra-arg=-isysroot --extra-arg=<MacOSX26.5.sdk> Ina229/Device/Device.cpp Ina229/Manager/Manager.cpp
-[1/2] Processing file Ina229/Device/Device.cpp.
-[2/2] Processing file Ina229/Manager/Manager.cpp.
-exit=0
+# Static analysis: cppcheck + clang-tidy (zero-finding gate)
+# Recorded 2026-10-10T08:57Z on Darwin arm64
+cppcheck: 2.22.0 (pinned 2.22.0); rules: --enable=warning,style,performance,portability --inline-suppr --error-exitcode=1 --library=posix --check-level=exhaustive
+clang-tidy: LLVM 22.1.8 (pinned 22.1.8); rules: .clang-tidy
+
+## build: host (build-static)
+translation units (2):
+  Ina229/Device/Device.cpp
+  examples/Ft232h/UnixSpi.cpp
+cppcheck findings: 0
+clang-tidy findings: 0
+
+## build: ft232h (build-ft232h)
+translation units (6):
+  Ina229/Device/Device.cpp
+  Ina229/Manager/Manager.cpp
+  examples/Ft232h/Client/BenchClient.cpp
+  examples/Ft232h/Deployment/Main.cpp
+  examples/Ft232h/Driver/BridgeDriver.cpp
+  examples/Ft232h/UnixSpi.cpp
+cppcheck findings: 0
+  (70 finding(s) in vendored, generated or out-of-tree files not counted)
+clang-tidy findings: 0
+
+result: PASS (0 finding(s))

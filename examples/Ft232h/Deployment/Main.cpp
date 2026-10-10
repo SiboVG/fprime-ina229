@@ -58,10 +58,12 @@ int main(int argc, char **argv) {
             std::cerr << "INA229 acquisition failed, status=" << status.e << '\n';
             return 1;
         }
-        std::cout << i << ',' << static_cast<unsigned>(reading.get_validMask()) << ',' << reading.get_busVolts()
-                  << ',' << reading.get_shuntVolts() << ',' << reading.get_temperatureC() << ','
-                  << reading.get_currentAmps() << ',' << reading.get_powerWatts() << ','
-                  << reading.get_energyJoules() << ',' << reading.get_chargeCoulombs() << std::endl;
+        std::cout << i << ',' << static_cast<unsigned>(reading.get_validMask()) << ','
+                  << reading.get_busVolts() << ',' << reading.get_shuntVolts() << ','
+                  << reading.get_temperatureC() << ',' << reading.get_currentAmps() << ','
+                  << reading.get_powerWatts() << ',' << reading.get_energyJoules() << ','
+                  << reading.get_chargeCoulombs() << '\n'
+                  << std::flush;
         if (i + 1 < static_cast<unsigned>(requested) && !waitMs(100))
             return 1;
     }

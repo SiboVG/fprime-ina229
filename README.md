@@ -16,6 +16,17 @@ cmake --build /tmp/ina229-tests
 ctest --test-dir /tmp/ina229-tests --output-on-failure
 ```
 
+Run the static-analysis gate (cppcheck 2.22.0 and clang-tidy 22.1.8, zero findings) on
+all production C++ sources:
+
+```sh
+python3 scripts/static_analysis.py               # host and FT232H/F Prime builds
+python3 scripts/static_analysis.py --build host  # without F Prime
+```
+
+See [static analysis](docs/verification.md#static-analysis) for the rule set, the
+suppression policy and the VS Code integration.
+
 This is candidate integration software, not flight-qualified software. See
 [device API and limits](docs/device.md) and [provenance](docs/provenance.md).
 
